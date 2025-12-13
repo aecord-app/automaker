@@ -92,7 +92,11 @@ export class AutoModeService {
   }
 
   private async runAutoLoop(): Promise<void> {
-    while (this.autoLoopRunning && this.autoLoopAbortController && !this.autoLoopAbortController.signal.aborted) {
+    while (
+      this.autoLoopRunning &&
+      this.autoLoopAbortController &&
+      !this.autoLoopAbortController.signal.aborted
+    ) {
       try {
         // Check if we have capacity
         if (this.runningFeatures.size >= (this.config?.maxConcurrency || 3)) {
@@ -101,7 +105,9 @@ export class AutoModeService {
         }
 
         // Load pending features
-        const pendingFeatures = await this.loadPendingFeatures(this.config!.projectPath);
+        const pendingFeatures = await this.loadPendingFeatures(
+          this.config!.projectPath
+        );
 
         if (pendingFeatures.length === 0) {
           this.emitAutoModeEvent("auto_mode_complete", {
@@ -112,7 +118,9 @@ export class AutoModeService {
         }
 
         // Find a feature not currently running
-        const nextFeature = pendingFeatures.find((f) => !this.runningFeatures.has(f.id));
+        const nextFeature = pendingFeatures.find(
+          (f) => !this.runningFeatures.has(f.id)
+        );
 
         if (nextFeature) {
           // Start feature execution in background
@@ -171,7 +179,11 @@ export class AutoModeService {
 
     // Setup worktree if enabled
     if (useWorktrees) {
-      worktreePath = await this.setupWorktree(projectPath, featureId, branchName);
+      worktreePath = await this.setupWorktree(
+        projectPath,
+        featureId,
+        branchName
+      );
     }
 
     const workDir = worktreePath || projectPath;
@@ -190,7 +202,11 @@ export class AutoModeService {
     this.emitAutoModeEvent("auto_mode_feature_start", {
       featureId,
       projectPath,
-      feature: { id: featureId, title: "Loading...", description: "Feature is starting" },
+      feature: {
+        id: featureId,
+        title: "Loading...",
+        description: "Feature is starting",
+      },
     });
 
     try {
@@ -219,12 +235,18 @@ export class AutoModeService {
       await this.runAgent(workDir, featureId, prompt, abortController, imagePaths, model);
 
       // Mark as waiting_approval for user review
-      await this.updateFeatureStatus(projectPath, featureId, "waiting_approval");
+      await this.updateFeatureStatus(
+        projectPath,
+        featureId,
+        "waiting_approval"
+      );
 
       this.emitAutoModeEvent("auto_mode_feature_complete", {
         featureId,
         passes: true,
-        message: `Feature completed in ${Math.round((Date.now() - this.runningFeatures.get(featureId)!.startTime) / 1000)}s`,
+        message: `Feature completed in ${Math.round(
+          (Date.now() - this.runningFeatures.get(featureId)!.startTime) / 1000
+        )}s`,
         projectPath,
       });
     } catch (error) {
@@ -293,7 +315,12 @@ export class AutoModeService {
     if (hasContext) {
       // Load previous context and continue
       const context = await fs.readFile(contextPath, "utf-8");
-      return this.executeFeatureWithContext(projectPath, featureId, context, useWorktrees);
+      return this.executeFeatureWithContext(
+        projectPath,
+        featureId,
+        context,
+        useWorktrees
+      );
     }
 
     // No context, start fresh
@@ -316,7 +343,12 @@ export class AutoModeService {
     const abortController = new AbortController();
 
     // Check if worktree exists
-    const worktreePath = path.join(projectPath, ".automaker", "worktrees", featureId);
+    const worktreePath = path.join(
+      projectPath,
+      ".automaker",
+      "worktrees",
+      featureId
+    );
     let workDir = projectPath;
 
     try {
@@ -379,7 +411,11 @@ Address the follow-up instructions above. Review the previous work and make the 
     this.emitAutoModeEvent("auto_mode_feature_start", {
       featureId,
       projectPath,
-      feature: feature || { id: featureId, title: "Follow-up", description: prompt.substring(0, 100) },
+      feature: feature || {
+        id: featureId,
+        title: "Follow-up",
+        description: prompt.substring(0, 100),
+      },
     });
 
     try {
@@ -472,7 +508,11 @@ Address the follow-up instructions above. Review the previous work and make the 
       await this.runAgent(workDir, featureId, fullPrompt, abortController, allImagePaths.length > 0 ? allImagePaths : imagePaths, model);
 
       // Mark as waiting_approval for user review
-      await this.updateFeatureStatus(projectPath, featureId, "waiting_approval");
+      await this.updateFeatureStatus(
+        projectPath,
+        featureId,
+        "waiting_approval"
+      );
 
       this.emitAutoModeEvent("auto_mode_feature_complete", {
         featureId,
@@ -496,8 +536,16 @@ Address the follow-up instructions above. Review the previous work and make the 
   /**
    * Verify a feature's implementation
    */
-  async verifyFeature(projectPath: string, featureId: string): Promise<boolean> {
-    const worktreePath = path.join(projectPath, ".automaker", "worktrees", featureId);
+  async verifyFeature(
+    projectPath: string,
+    featureId: string
+  ): Promise<boolean> {
+    const worktreePath = path.join(
+      projectPath,
+      ".automaker",
+      "worktrees",
+      featureId
+    );
     let workDir = projectPath;
 
     try {
@@ -516,7 +564,8 @@ Address the follow-up instructions above. Review the previous work and make the 
     ];
 
     let allPassed = true;
-    const results: Array<{ check: string; passed: boolean; output?: string }> = [];
+    const results: Array<{ check: string; passed: boolean; output?: string }> =
+      [];
 
     for (const check of verificationChecks) {
       try {
@@ -524,7 +573,11 @@ Address the follow-up instructions above. Review the previous work and make the 
           cwd: workDir,
           timeout: 120000,
         });
-        results.push({ check: check.name, passed: true, output: stdout || stderr });
+        results.push({
+          check: check.name,
+          passed: true,
+          output: stdout || stderr,
+        });
       } catch (error) {
         allPassed = false;
         results.push({
@@ -541,7 +594,9 @@ Address the follow-up instructions above. Review the previous work and make the 
       passes: allPassed,
       message: allPassed
         ? "All verification checks passed"
-        : `Verification failed: ${results.find(r => !r.passed)?.check || "Unknown"}`,
+        : `Verification failed: ${
+            results.find((r) => !r.passed)?.check || "Unknown"
+          }`,
     });
 
     return allPassed;
@@ -550,8 +605,16 @@ Address the follow-up instructions above. Review the previous work and make the 
   /**
    * Commit feature changes
    */
-  async commitFeature(projectPath: string, featureId: string): Promise<string | null> {
-    const worktreePath = path.join(projectPath, ".automaker", "worktrees", featureId);
+  async commitFeature(
+    projectPath: string,
+    featureId: string
+  ): Promise<string | null> {
+    const worktreePath = path.join(
+      projectPath,
+      ".automaker",
+      "worktrees",
+      featureId
+    );
     let workDir = projectPath;
 
     try {
@@ -563,7 +626,9 @@ Address the follow-up instructions above. Review the previous work and make the 
 
     try {
       // Check for changes
-      const { stdout: status } = await execAsync("git status --porcelain", { cwd: workDir });
+      const { stdout: status } = await execAsync("git status --porcelain", {
+        cwd: workDir,
+      });
       if (!status.trim()) {
         return null; // No changes
       }
@@ -581,7 +646,9 @@ Address the follow-up instructions above. Review the previous work and make the 
       });
 
       // Get commit hash
-      const { stdout: hash } = await execAsync("git rev-parse HEAD", { cwd: workDir });
+      const { stdout: hash } = await execAsync("git rev-parse HEAD", {
+        cwd: workDir,
+      });
 
       this.emitAutoModeEvent("auto_mode_feature_complete", {
         featureId,
@@ -599,7 +666,10 @@ Address the follow-up instructions above. Review the previous work and make the 
   /**
    * Check if context exists for a feature
    */
-  async contextExists(projectPath: string, featureId: string): Promise<boolean> {
+  async contextExists(
+    projectPath: string,
+    featureId: string
+  ): Promise<boolean> {
     const contextPath = path.join(
       projectPath,
       ".automaker",
@@ -626,7 +696,11 @@ Address the follow-up instructions above. Review the previous work and make the 
     this.emitAutoModeEvent("auto_mode_feature_start", {
       featureId: analysisFeatureId,
       projectPath,
-      feature: { id: analysisFeatureId, title: "Project Analysis", description: "Analyzing project structure" },
+      feature: {
+        id: analysisFeatureId,
+        title: "Project Analysis",
+        description: "Analyzing project structure",
+      },
     });
 
     const prompt = `Analyze this project and provide a summary of:
@@ -673,7 +747,11 @@ Format your response as a structured markdown document.`;
       }
 
       // Save analysis
-      const analysisPath = path.join(projectPath, ".automaker", "project-analysis.md");
+      const analysisPath = path.join(
+        projectPath,
+        ".automaker",
+        "project-analysis.md"
+      );
       await fs.mkdir(path.dirname(analysisPath), { recursive: true });
       await fs.writeFile(analysisPath, analysisResult);
 
@@ -767,7 +845,10 @@ Format your response as a structured markdown document.`;
     return worktreePath;
   }
 
-  private async loadFeature(projectPath: string, featureId: string): Promise<Feature | null> {
+  private async loadFeature(
+    projectPath: string,
+    featureId: string
+  ): Promise<Feature | null> {
     const featurePath = path.join(
       projectPath,
       ".automaker",
@@ -802,12 +883,13 @@ Format your response as a structured markdown document.`;
       const feature = JSON.parse(data);
       feature.status = status;
       feature.updatedAt = new Date().toISOString();
-      // Set justFinished flag when moving to waiting_approval (agent just completed)
+      // Set justFinishedAt timestamp when moving to waiting_approval (agent just completed)
+      // Badge will show for 2 minutes after this timestamp
       if (status === "waiting_approval") {
-        feature.justFinished = true;
+        feature.justFinishedAt = new Date().toISOString();
       } else {
-        // Clear the flag when moving to other statuses
-        feature.justFinished = false;
+        // Clear the timestamp when moving to other statuses
+        feature.justFinishedAt = undefined;
       }
       await fs.writeFile(featurePath, JSON.stringify(feature, null, 2));
     } catch {
@@ -824,7 +906,11 @@ Format your response as a structured markdown document.`;
 
       for (const entry of entries) {
         if (entry.isDirectory()) {
-          const featurePath = path.join(featuresDir, entry.name, "feature.json");
+          const featurePath = path.join(
+            featuresDir,
+            entry.name,
+            "feature.json"
+          );
           try {
             const data = await fs.readFile(featurePath, "utf-8");
             const feature = JSON.parse(data);
@@ -940,7 +1026,13 @@ When done, summarize what you implemented and any notes for the developer.`;
     // Execute via provider
     const stream = provider.executeQuery(options);
     let responseText = "";
-    const outputPath = path.join(workDir, ".automaker", "features", featureId, "agent-output.md");
+    const outputPath = path.join(
+      workDir,
+      ".automaker",
+      "features",
+      featureId,
+      "agent-output.md"
+    );
 
     for await (const msg of stream) {
       if (msg.type === "assistant" && msg.message?.content) {
