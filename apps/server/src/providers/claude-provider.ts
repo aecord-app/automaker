@@ -7,10 +7,6 @@
 
 import { query, type Options } from "@anthropic-ai/claude-agent-sdk";
 import { BaseProvider } from "./base-provider.js";
-import {
-  convertHistoryToMessages,
-  normalizeContentBlocks,
-} from "../lib/conversation-utils.js";
 import type {
   ExecuteOptions,
   ProviderMessage,
@@ -38,6 +34,7 @@ export class ClaudeProvider extends BaseProvider {
       allowedTools,
       abortController,
       conversationHistory,
+      sdkSessionId,
     } = options;
 
     // Build Claude SDK options
@@ -65,69 +62,17 @@ export class ClaudeProvider extends BaseProvider {
         autoAllowBashIfSandboxed: true,
       },
       abortController,
+      // Resume existing SDK session if we have a session ID
+      ...(sdkSessionId && conversationHistory && conversationHistory.length > 0
+        ? { resume: sdkSessionId }
+        : {}),
     };
 
-    // Build prompt payload with conversation history
-    let promptPayload: string | AsyncGenerator<any, void, unknown> | Array<any>;
+    // Build prompt payload
+    let promptPayload: string | AsyncIterable<any>;
 
-    if (conversationHistory && conversationHistory.length > 0) {
-      // Multi-turn conversation with history
-      // Convert history to SDK message format
-      // Note: When using async generator, SDK only accepts SDKUserMessage (type: 'user')
-      // So we filter to only include user messages to avoid SDK errors
-      const historyMessages = convertHistoryToMessages(conversationHistory);
-      const hasAssistantMessages = historyMessages.some(
-        (msg) => msg.type === "assistant"
-      );
-
-      if (hasAssistantMessages) {
-        // If we have assistant messages, use async generator but filter to only user messages
-        // This maintains conversation flow while respecting SDK type constraints
-        promptPayload = (async function* () {
-          // Filter to only user messages - SDK async generator only accepts SDKUserMessage
-          const userHistoryMessages = historyMessages.filter(
-            (msg) => msg.type === "user"
-          );
-          for (const msg of userHistoryMessages) {
-            yield msg;
-          }
-
-          // Yield current prompt
-          const normalizedPrompt = normalizeContentBlocks(prompt);
-          const currentPrompt = {
-            type: "user" as const,
-            session_id: "",
-            message: {
-              role: "user" as const,
-              content: normalizedPrompt,
-            },
-            parent_tool_use_id: null,
-          };
-          yield currentPrompt;
-        })();
-      } else {
-        // Only user messages in history - can use async generator normally
-        promptPayload = (async function* () {
-          for (const msg of historyMessages) {
-            yield msg;
-          }
-
-          // Yield current prompt
-          const normalizedPrompt = normalizeContentBlocks(prompt);
-          const currentPrompt = {
-            type: "user" as const,
-            session_id: "",
-            message: {
-              role: "user" as const,
-              content: normalizedPrompt,
-            },
-            parent_tool_use_id: null,
-          };
-          yield currentPrompt;
-        })();
-      }
-    } else if (Array.isArray(prompt)) {
-      // Multi-part prompt (with images) - no history
+    if (Array.isArray(prompt)) {
+      // Multi-part prompt (with images)
       promptPayload = (async function* () {
         const multiPartPrompt = {
           type: "user" as const,
@@ -141,7 +86,7 @@ export class ClaudeProvider extends BaseProvider {
         yield multiPartPrompt;
       })();
     } else {
-      // Simple text prompt - no history
+      // Simple text prompt
       promptPayload = prompt;
     }
 

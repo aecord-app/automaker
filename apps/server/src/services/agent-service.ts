@@ -33,6 +33,7 @@ interface Session {
   abortController: AbortController | null;
   workingDirectory: string;
   model?: string;
+  sdkSessionId?: string; // Claude SDK session ID for conversation continuity
 }
 
 interface SessionMetadata {
@@ -200,6 +201,7 @@ export class AgentService {
         abortController: session.abortController!,
         conversationHistory:
           conversationHistory.length > 0 ? conversationHistory : undefined,
+        sdkSessionId: session.sdkSessionId, // Pass SDK session ID for resuming
       };
 
       // Build prompt content with images
@@ -221,6 +223,14 @@ export class AgentService {
       const toolUses: Array<{ name: string; input: unknown }> = [];
 
       for await (const msg of stream) {
+        // Capture SDK session ID from any message
+        if (msg.session_id && !session.sdkSessionId) {
+          session.sdkSessionId = msg.session_id;
+          console.log(
+            `[AgentService] Captured SDK session ID: ${msg.session_id}`
+          );
+        }
+
         if (msg.type === "assistant") {
           if (msg.message?.content) {
             for (const block of msg.message.content) {

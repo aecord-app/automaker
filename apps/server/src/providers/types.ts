@@ -32,6 +32,7 @@ export interface ExecuteOptions {
   mcpServers?: Record<string, unknown>;
   abortController?: AbortController;
   conversationHistory?: ConversationMessage[]; // Previous messages for context
+  sdkSessionId?: string; // Claude SDK session ID for resuming conversations
 }
 
 /**
