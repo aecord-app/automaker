@@ -16,3 +16,4 @@ dist/
 /.automaker/
 
 /logs
+.claude/settings.local.json

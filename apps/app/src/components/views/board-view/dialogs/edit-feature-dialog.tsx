@@ -32,6 +32,7 @@ import {
   ThinkingLevelSelector,
   ProfileQuickSelect,
   TestingTabContent,
+  PrioritySelector,
 } from "../shared";
 import { DependencyTreeDialog } from "./dependency-tree-dialog";
 
@@ -222,62 +223,16 @@ export function EditFeatureDialog({
             </div>
 
             {/* Priority Selector */}
-            <div className="space-y-2">
-              <Label>Priority</Label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setEditingFeature({
-                      ...editingFeature,
-                      priority: 1,
-                    })
-                  }
-                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    (editingFeature.priority ?? 2) === 1
-                      ? "bg-red-500/20 text-red-500 border-2 border-red-500/50"
-                      : "bg-muted/50 text-muted-foreground border border-border hover:bg-muted"
-                  }`}
-                  data-testid="edit-priority-high-button"
-                >
-                  High
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setEditingFeature({
-                      ...editingFeature,
-                      priority: 2,
-                    })
-                  }
-                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    (editingFeature.priority ?? 2) === 2
-                      ? "bg-yellow-500/20 text-yellow-500 border-2 border-yellow-500/50"
-                      : "bg-muted/50 text-muted-foreground border border-border hover:bg-muted"
-                  }`}
-                  data-testid="edit-priority-medium-button"
-                >
-                  Medium
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setEditingFeature({
-                      ...editingFeature,
-                      priority: 3,
-                    })
-                  }
-                  className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    (editingFeature.priority ?? 2) === 3
-                      ? "bg-blue-500/20 text-blue-500 border-2 border-blue-500/50"
-                      : "bg-muted/50 text-muted-foreground border border-border hover:bg-muted"
-                  }`}
-                  data-testid="edit-priority-low-button"
-                >
-                  Low
-                </button>
-              </div>
-            </div>
+            <PrioritySelector
+              selectedPriority={editingFeature.priority ?? 2}
+              onPrioritySelect={(priority) =>
+                setEditingFeature({
+                  ...editingFeature,
+                  priority,
+                })
+              }
+              testIdPrefix="edit-priority"
+            />
           </TabsContent>
 
           {/* Model Tab */}
