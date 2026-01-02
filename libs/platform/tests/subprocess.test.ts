@@ -20,6 +20,7 @@ async function collectAsyncGenerator<T>(generator: AsyncGenerator<T>): Promise<T
 describe('subprocess.ts', () => {
   let consoleSpy: {
     log: ReturnType<typeof vi.spyOn>;
+    warn: ReturnType<typeof vi.spyOn>;
     error: ReturnType<typeof vi.spyOn>;
   };
 
@@ -27,12 +28,14 @@ describe('subprocess.ts', () => {
     vi.clearAllMocks();
     consoleSpy = {
       log: vi.spyOn(console, 'log').mockImplementation(() => {}),
+      warn: vi.spyOn(console, 'warn').mockImplementation(() => {}),
       error: vi.spyOn(console, 'error').mockImplementation(() => {}),
     };
   });
 
   afterEach(() => {
     consoleSpy.log.mockRestore();
+    consoleSpy.warn.mockRestore();
     consoleSpy.error.mockRestore();
   });
 
@@ -176,11 +179,11 @@ describe('subprocess.ts', () => {
       const generator = spawnJSONLProcess(baseOptions);
       await collectAsyncGenerator(generator);
 
-      expect(consoleSpy.error).toHaveBeenCalledWith(
-        expect.stringContaining('Warning: something happened')
+      expect(consoleSpy.warn).toHaveBeenCalledWith(
+        expect.stringContaining('[SubprocessManager] stderr: Warning: something happened')
       );
-      expect(consoleSpy.error).toHaveBeenCalledWith(
-        expect.stringContaining('Error: critical issue')
+      expect(consoleSpy.warn).toHaveBeenCalledWith(
+        expect.stringContaining('[SubprocessManager] stderr: Error: critical issue')
       );
     });
 
