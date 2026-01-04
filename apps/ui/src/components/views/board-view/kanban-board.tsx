@@ -50,6 +50,10 @@ interface KanbanBoardProps {
   onArchiveAllVerified: () => void;
   pipelineConfig: PipelineConfig | null;
   onOpenPipelineSettings?: () => void;
+  // Selection mode props
+  isSelectionMode?: boolean;
+  selectedFeatureIds?: Set<string>;
+  onToggleFeatureSelection?: (featureId: string) => void;
 }
 
 export function KanbanBoard({
@@ -83,6 +87,9 @@ export function KanbanBoard({
   onArchiveAllVerified,
   pipelineConfig,
   onOpenPipelineSettings,
+  isSelectionMode = false,
+  selectedFeatureIds = new Set(),
+  onToggleFeatureSelection,
 }: KanbanBoardProps) {
   // Generate columns including pipeline steps
   const columns = useMemo(() => getColumnsWithPipeline(pipelineConfig), [pipelineConfig]);
@@ -200,6 +207,9 @@ export function KanbanBoard({
                         glassmorphism={backgroundSettings.cardGlassmorphism}
                         cardBorderEnabled={backgroundSettings.cardBorderEnabled}
                         cardBorderOpacity={backgroundSettings.cardBorderOpacity}
+                        isSelectionMode={isSelectionMode}
+                        isSelected={selectedFeatureIds.has(feature.id)}
+                        onToggleSelect={() => onToggleFeatureSelection?.(feature.id)}
                       />
                     );
                   })}
