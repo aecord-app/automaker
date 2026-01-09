@@ -132,6 +132,7 @@ export interface SetupState {
   claudeCliStatus: CliStatus | null;
   claudeAuthStatus: ClaudeAuthStatus | null;
   claudeInstallProgress: InstallProgress;
+  claudeIsVerifying: boolean;
 
   // GitHub CLI state
   ghCliStatus: GhCliStatus | null;
@@ -164,6 +165,7 @@ export interface SetupActions {
   setClaudeAuthStatus: (status: ClaudeAuthStatus | null) => void;
   setClaudeInstallProgress: (progress: Partial<InstallProgress>) => void;
   resetClaudeInstallProgress: () => void;
+  setClaudeIsVerifying: (isVerifying: boolean) => void;
 
   // GitHub CLI
   setGhCliStatus: (status: GhCliStatus | null) => void;
@@ -202,6 +204,7 @@ const initialState: SetupState = {
   claudeCliStatus: null,
   claudeAuthStatus: null,
   claudeInstallProgress: { ...initialInstallProgress },
+  claudeIsVerifying: false,
 
   ghCliStatus: null,
   cursorCliStatus: null,
@@ -254,6 +257,8 @@ export const useSetupStore = create<SetupState & SetupActions>()((set, get) => (
     set({
       claudeInstallProgress: { ...initialInstallProgress },
     }),
+
+  setClaudeIsVerifying: (isVerifying) => set({ claudeIsVerifying: isVerifying }),
 
   // GitHub CLI
   setGhCliStatus: (status) => set({ ghCliStatus: status }),
