@@ -1,4 +1,4 @@
-import { useState, useCallback, useSyncExternalStore } from 'react';
+import { useState, useCallback, useSyncExternalStore, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store/app-store';
 import { Button } from '@/components/ui/button';
@@ -108,6 +108,25 @@ export function BottomDock({ className }: BottomDockProps) {
   const autoModeState = currentProject ? getAutoModeState(currentProject.id) : null;
   const runningAgentsCount = autoModeState?.runningTasks?.length ?? 0;
 
+  // Ref for click-outside detection
+  const dockRef = useRef<HTMLDivElement>(null);
+
+  // Handle click outside to close the panel
+  useEffect(() => {
+    if (!isExpanded) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dockRef.current && !dockRef.current.contains(event.target as Node)) {
+        setIsExpanded(false);
+        setIsMaximized(false);
+      }
+    };
+
+    // Use mousedown for more responsive feel
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isExpanded]);
+
   const handleTabClick = useCallback(
     (tab: DockTab) => {
       if (activeTab === tab) {
@@ -214,6 +233,7 @@ export function BottomDock({ className }: BottomDockProps) {
 
     return (
       <div
+        ref={dockRef}
         className={cn(
           'bg-background/95 backdrop-blur-sm',
           'transition-all duration-300 ease-in-out flex',
@@ -371,6 +391,7 @@ export function BottomDock({ className }: BottomDockProps) {
 
   return (
     <div
+      ref={dockRef}
       className={cn(
         'fixed left-0 right-0 bottom-0 border-t border-border bg-background/95 backdrop-blur-sm z-30',
         'transition-all duration-300 ease-in-out flex flex-col',
