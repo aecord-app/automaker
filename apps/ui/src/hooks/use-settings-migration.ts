@@ -533,6 +533,8 @@ export function hydrateStoreFromSettings(settings: GlobalSettings): void {
     lastOpened: ref.lastOpened,
     theme: ref.theme,
     isFavorite: ref.isFavorite,
+    icon: ref.icon,
+    customIconPath: ref.customIconPath,
     features: [], // Features are loaded separately when project is opened
   }));
 
@@ -562,6 +564,7 @@ export function hydrateStoreFromSettings(settings: GlobalSettings): void {
     useWorktrees: settings.useWorktrees ?? true,
     defaultPlanningMode: settings.defaultPlanningMode ?? 'skip',
     defaultRequirePlanApproval: settings.defaultRequirePlanApproval ?? false,
+    defaultFeatureModel: settings.defaultFeatureModel ?? { model: 'opus' },
     muteDoneSound: settings.muteDoneSound ?? false,
     enhancementModel: settings.enhancementModel ?? 'sonnet',
     validationModel: settings.validationModel ?? 'opus',

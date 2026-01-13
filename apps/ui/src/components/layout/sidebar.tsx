@@ -18,7 +18,6 @@ import {
   CollapseToggleButton,
   SidebarHeader,
   SidebarNavigation,
-  ProjectSelectorWithOptions,
   SidebarFooter,
 } from './sidebar/components';
 import { TrashDialog, OnboardingDialog } from './sidebar/dialogs';
@@ -63,9 +62,6 @@ export function Sidebar() {
 
   // Get customizable keyboard shortcuts
   const shortcuts = useKeyboardShortcutsConfig();
-
-  // State for project picker (needed for keyboard shortcuts)
-  const [isProjectPickerOpen, setIsProjectPickerOpen] = useState(false);
 
   // State for delete project confirmation dialog
   const [showDeleteProjectDialog, setShowDeleteProjectDialog] = useState(false);
@@ -240,7 +236,6 @@ export function Sidebar() {
     navigate,
     toggleSidebar,
     handleOpenFolder,
-    setIsProjectPickerOpen,
     cyclePrevProject,
     cycleNextProject,
     unviewedValidationsCount,
@@ -287,14 +282,7 @@ export function Sidebar() {
         />
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          <SidebarHeader sidebarOpen={sidebarOpen} navigate={navigate} />
-
-          <ProjectSelectorWithOptions
-            sidebarOpen={sidebarOpen}
-            isProjectPickerOpen={isProjectPickerOpen}
-            setIsProjectPickerOpen={setIsProjectPickerOpen}
-            setShowDeleteProjectDialog={setShowDeleteProjectDialog}
-          />
+          <SidebarHeader sidebarOpen={sidebarOpen} currentProject={currentProject} />
 
           <SidebarNavigation
             currentProject={currentProject}

@@ -6,7 +6,7 @@
  * (for file I/O via SettingsService) and the UI (for state management and sync).
  */
 
-import type { ModelAlias, AgentModel, CodexModelId } from './model.js';
+import type { ModelAlias, ModelId } from './model.js';
 import type { CursorModelId } from './cursor-models.js';
 import { CURSOR_MODEL_MAP, getAllCursorModelIds } from './cursor-models.js';
 import type { OpencodeModelId } from './opencode-models.js';
@@ -114,8 +114,8 @@ const DEFAULT_CODEX_ADDITIONAL_DIRS: string[] = [];
  * - Cursor models: Handle thinking internally
  */
 export interface PhaseModelEntry {
-  /** The model to use (Claude alias, Cursor model ID, or Codex model ID) */
-  model: ModelAlias | CursorModelId | CodexModelId;
+  /** The model to use (supports Claude, Cursor, Codex, OpenCode, and dynamic provider IDs) */
+  model: ModelId;
   /** Extended thinking level (only applies to Claude models, defaults to 'none') */
   thinkingLevel?: ThinkingLevel;
   /** Reasoning effort level (only applies to Codex models, defaults to 'none') */
@@ -297,6 +297,10 @@ export interface ProjectRef {
   theme?: string;
   /** Whether project is pinned to favorites on dashboard */
   isFavorite?: boolean;
+  /** Lucide icon name for project identification */
+  icon?: string;
+  /** Custom icon image path for project switcher */
+  customIconPath?: string;
 }
 
 /**
@@ -379,6 +383,8 @@ export interface GlobalSettings {
   defaultPlanningMode: PlanningMode;
   /** Default: require manual approval before generating */
   defaultRequirePlanApproval: boolean;
+  /** Default model and thinking level for new feature cards */
+  defaultFeatureModel: PhaseModelEntry;
 
   // Audio Preferences
   /** Mute completion notification sound */
@@ -606,6 +612,10 @@ export interface ProjectSettings {
   /** Project-specific board background settings */
   boardBackground?: BoardBackgroundSettings;
 
+  // Project Branding
+  /** Custom icon image path for project switcher (relative to .automaker/) */
+  customIconPath?: string;
+
   // UI Visibility
   /** Whether the worktree panel row is visible (default: true) */
   worktreePanelVisible?: boolean;
@@ -709,6 +719,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   useWorktrees: true,
   defaultPlanningMode: 'skip',
   defaultRequirePlanApproval: false,
+  defaultFeatureModel: { model: 'opus' },
   muteDoneSound: false,
   enableAiCommitMessages: true,
   phaseModels: DEFAULT_PHASE_MODELS,

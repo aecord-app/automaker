@@ -10,7 +10,9 @@ import type {
   IssueValidationResponse,
   IssueValidationEvent,
   StoredValidation,
-  AgentModel,
+  ModelId,
+  ThinkingLevel,
+  ReasoningEffort,
   GitHubComment,
   IssueCommentsResult,
   Idea,
@@ -314,7 +316,9 @@ export interface GitHubAPI {
   validateIssue: (
     projectPath: string,
     issue: IssueValidationInput,
-    model?: AgentModel
+    model?: ModelId,
+    thinkingLevel?: ThinkingLevel,
+    reasoningEffort?: ReasoningEffort
   ) => Promise<{ success: boolean; message?: string; issueNumber?: number; error?: string }>;
   /** Check validation status for an issue or all issues */
   getValidationStatus: (
@@ -1294,6 +1298,7 @@ interface SetupAPI {
     success: boolean;
     hasAnthropicKey: boolean;
     hasGoogleKey: boolean;
+    hasOpenaiKey: boolean;
   }>;
   deleteApiKey: (
     provider: string
@@ -1377,6 +1382,7 @@ function createMockSetupAPI(): SetupAPI {
         success: true,
         hasAnthropicKey: false,
         hasGoogleKey: false,
+        hasOpenaiKey: false,
       };
     },
 
@@ -3016,8 +3022,20 @@ function createMockGitHubAPI(): GitHubAPI {
         mergedPRs: [],
       };
     },
-    validateIssue: async (projectPath: string, issue: IssueValidationInput, model?: AgentModel) => {
-      console.log('[Mock] Starting async validation:', { projectPath, issue, model });
+    validateIssue: async (
+      projectPath: string,
+      issue: IssueValidationInput,
+      model?: ModelId,
+      thinkingLevel?: ThinkingLevel,
+      reasoningEffort?: ReasoningEffort
+    ) => {
+      console.log('[Mock] Starting async validation:', {
+        projectPath,
+        issue,
+        model,
+        thinkingLevel,
+        reasoningEffort,
+      });
 
       // Simulate async validation in background
       setTimeout(() => {
@@ -3112,6 +3130,8 @@ export interface Project {
   lastOpened?: string;
   theme?: string; // Per-project theme override (uses ThemeMode from app-store)
   isFavorite?: boolean; // Pin project to top of dashboard
+  icon?: string; // Lucide icon name for project identification
+  customIconPath?: string; // Path to custom uploaded icon image in .automaker/images/
 }
 
 export interface TrashedProject extends Project {

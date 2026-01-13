@@ -659,6 +659,7 @@ export interface AppState {
 
   defaultPlanningMode: PlanningMode;
   defaultRequirePlanApproval: boolean;
+  defaultFeatureModel: PhaseModelEntry;
 
   // Plan Approval State
   // When a plan requires user approval, this holds the pending approval details
@@ -691,6 +692,7 @@ export interface AppState {
   codexModelsLoading: boolean;
   codexModelsError: string | null;
   codexModelsLastFetched: number | null;
+  codexModelsLastFailedAt: number | null;
 
   // Pipeline Configuration (per-project, keyed by project path)
   pipelineConfigByProject: Record<string, PipelineConfig>;
@@ -875,6 +877,9 @@ export interface AppActions {
   cycleNextProject: () => void; // Cycle forward through project history (E)
   clearProjectHistory: () => void; // Clear history, keeping only current project
   toggleProjectFavorite: (projectId: string) => void; // Toggle project favorite status
+  setProjectIcon: (projectId: string, icon: string | null) => void; // Set project icon (null to clear)
+  setProjectCustomIcon: (projectId: string, customIconPath: string | null) => void; // Set custom project icon image path (null to clear)
+  setProjectName: (projectId: string, name: string) => void; // Update project name
 
   // View actions
   setCurrentView: (view: ViewMode) => void;
@@ -1106,6 +1111,7 @@ export interface AppActions {
 
   setDefaultPlanningMode: (mode: PlanningMode) => void;
   setDefaultRequirePlanApproval: (require: boolean) => void;
+  setDefaultFeatureModel: (entry: PhaseModelEntry) => void;
 
   // Plan Approval actions
   setPendingPlanApproval: (
@@ -1280,6 +1286,7 @@ const initialState: AppState = {
   specCreatingForProject: null,
   defaultPlanningMode: 'skip' as PlanningMode,
   defaultRequirePlanApproval: false,
+  defaultFeatureModel: { model: 'opus' } as PhaseModelEntry,
   pendingPlanApproval: null,
   claudeRefreshInterval: 60,
   claudeUsage: null,
@@ -1290,6 +1297,7 @@ const initialState: AppState = {
   codexModelsLoading: false,
   codexModelsError: null,
   codexModelsLastFetched: null,
+  codexModelsLastFailedAt: null,
   pipelineConfigByProject: {},
   worktreePanelVisibleByProject: {},
   showInitScriptIndicatorByProject: {},
@@ -1559,6 +1567,57 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
         currentProject: {
           ...currentProject,
           isFavorite: !currentProject.isFavorite,
+        },
+      });
+    }
+  },
+
+  setProjectIcon: (projectId, icon) => {
+    const { projects, currentProject } = get();
+    const updatedProjects = projects.map((p) =>
+      p.id === projectId ? { ...p, icon: icon === null ? undefined : icon } : p
+    );
+    set({ projects: updatedProjects });
+    // Also update currentProject if it matches
+    if (currentProject?.id === projectId) {
+      set({
+        currentProject: {
+          ...currentProject,
+          icon: icon === null ? undefined : icon,
+        },
+      });
+    }
+  },
+
+  setProjectCustomIcon: (projectId, customIconPath) => {
+    const { projects, currentProject } = get();
+    const updatedProjects = projects.map((p) =>
+      p.id === projectId
+        ? { ...p, customIconPath: customIconPath === null ? undefined : customIconPath }
+        : p
+    );
+    set({ projects: updatedProjects });
+    // Also update currentProject if it matches
+    if (currentProject?.id === projectId) {
+      set({
+        currentProject: {
+          ...currentProject,
+          customIconPath: customIconPath === null ? undefined : customIconPath,
+        },
+      });
+    }
+  },
+
+  setProjectName: (projectId, name) => {
+    const { projects, currentProject } = get();
+    const updatedProjects = projects.map((p) => (p.id === projectId ? { ...p, name } : p));
+    set({ projects: updatedProjects });
+    // Also update currentProject if it matches
+    if (currentProject?.id === projectId) {
+      set({
+        currentProject: {
+          ...currentProject,
+          name,
         },
       });
     }
@@ -3106,6 +3165,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
 
   setDefaultPlanningMode: (mode) => set({ defaultPlanningMode: mode }),
   setDefaultRequirePlanApproval: (require) => set({ defaultRequirePlanApproval: require }),
+  setDefaultFeatureModel: (entry) => set({ defaultFeatureModel: entry }),
 
   // Plan Approval actions
   setPendingPlanApproval: (approval) => set({ pendingPlanApproval: approval }),
@@ -3128,13 +3188,29 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
 
   // Codex Models actions
   fetchCodexModels: async (forceRefresh = false) => {
-    const { codexModelsLastFetched, codexModelsLoading } = get();
+    const FAILURE_COOLDOWN_MS = 30 * 1000; // 30 seconds
+    const SUCCESS_CACHE_MS = 5 * 60 * 1000; // 5 minutes
+
+    const { codexModelsLastFetched, codexModelsLoading, codexModelsLastFailedAt } = get();
 
     // Skip if already loading
     if (codexModelsLoading) return;
 
-    // Skip if recently fetched (< 5 minutes ago) and not forcing refresh
-    if (!forceRefresh && codexModelsLastFetched && Date.now() - codexModelsLastFetched < 300000) {
+    // Skip if recently failed and not forcing refresh
+    if (
+      !forceRefresh &&
+      codexModelsLastFailedAt &&
+      Date.now() - codexModelsLastFailedAt < FAILURE_COOLDOWN_MS
+    ) {
+      return;
+    }
+
+    // Skip if recently fetched successfully and not forcing refresh
+    if (
+      !forceRefresh &&
+      codexModelsLastFetched &&
+      Date.now() - codexModelsLastFetched < SUCCESS_CACHE_MS
+    ) {
       return;
     }
 
@@ -3157,12 +3233,14 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
         codexModelsLastFetched: Date.now(),
         codexModelsLoading: false,
         codexModelsError: null,
+        codexModelsLastFailedAt: null, // Clear failure on success
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       set({
         codexModelsError: errorMessage,
         codexModelsLoading: false,
+        codexModelsLastFailedAt: Date.now(), // Record failure time for cooldown
       });
     }
   },

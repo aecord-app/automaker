@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useSearch } from '@tanstack/react-router';
 import { useAppStore } from '@/store/app-store';
-import { useSetupStore } from '@/store/setup-store';
 
 import { useSettingsView, type SettingsViewId } from './settings-view/hooks';
 import { NAV_ITEMS } from './settings-view/config/navigation';
@@ -56,6 +56,8 @@ export function SettingsView() {
     setDefaultPlanningMode,
     defaultRequirePlanApproval,
     setDefaultRequirePlanApproval,
+    defaultFeatureModel,
+    setDefaultFeatureModel,
     autoLoadClaudeMd,
     setAutoLoadClaudeMd,
     promptCustomization,
@@ -72,6 +74,8 @@ export function SettingsView() {
       name: project.name,
       path: project.path,
       theme: project.theme as Theme | undefined,
+      icon: project.icon,
+      customIconPath: project.customIconPath,
     };
   };
 
@@ -91,8 +95,11 @@ export function SettingsView() {
     }
   };
 
+  // Get initial view from URL search params
+  const { view: initialView } = useSearch({ from: '/settings' });
+
   // Use settings view navigation hook
-  const { activeView, navigateTo } = useSettingsView();
+  const { activeView, navigateTo } = useSettingsView({ initialView });
 
   // Handle navigation - if navigating to 'providers', default to 'claude-provider'
   const handleNavigate = (viewId: SettingsViewId) => {
@@ -185,12 +192,14 @@ export function SettingsView() {
             defaultPlanningMode={defaultPlanningMode}
             defaultRequirePlanApproval={defaultRequirePlanApproval}
             enableAiCommitMessages={enableAiCommitMessages}
+            defaultFeatureModel={defaultFeatureModel}
             onDefaultSkipTestsChange={setDefaultSkipTests}
             onEnableDependencyBlockingChange={setEnableDependencyBlocking}
             onSkipVerificationInAutoModeChange={setSkipVerificationInAutoMode}
             onDefaultPlanningModeChange={setDefaultPlanningMode}
             onDefaultRequirePlanApprovalChange={setDefaultRequirePlanApproval}
             onEnableAiCommitMessagesChange={setEnableAiCommitMessages}
+            onDefaultFeatureModelChange={setDefaultFeatureModel}
           />
         );
       case 'worktrees':

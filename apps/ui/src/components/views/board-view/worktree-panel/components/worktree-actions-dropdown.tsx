@@ -148,8 +148,12 @@ export function WorktreeActionsDropdown({
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               Dev Server Running (:{devServerInfo?.port})
             </DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => onOpenDevServerUrl(worktree)} className="text-xs">
-              <Globe className="w-3.5 h-3.5 mr-2" />
+            <DropdownMenuItem
+              onClick={() => onOpenDevServerUrl(worktree)}
+              className="text-xs"
+              aria-label={`Open dev server on port ${devServerInfo?.port} in browser`}
+            >
+              <Globe className="w-3.5 h-3.5 mr-2" aria-hidden="true" />
               Open in Browser
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -325,7 +329,7 @@ export function WorktreeActionsDropdown({
           <>
             <DropdownMenuItem
               onClick={() => {
-                window.open(worktree.pr!.url, '_blank');
+                window.open(worktree.pr!.url, '_blank', 'noopener,noreferrer');
               }}
               className="text-xs"
             >

@@ -2,6 +2,7 @@ import { createRootRoute, Outlet, useLocation, useNavigate } from '@tanstack/rea
 import { useEffect, useState, useCallback, useDeferredValue, useRef } from 'react';
 import { createLogger } from '@automaker/utils/logger';
 import { Sidebar } from '@/components/layout/sidebar';
+import { ProjectSwitcher } from '@/components/layout/project-switcher';
 import {
   FileBrowserProvider,
   useFileBrowser,
@@ -803,6 +804,10 @@ function RootLayoutContent() {
     );
   }
 
+  // Show project switcher on all app pages (not on dashboard, setup, or login)
+  const showProjectSwitcher =
+    !isDashboardRoute && !isSetupRoute && !isLoginRoute && !isLoggedOutRoute;
+
   return (
     <>
       <main className="flex h-screen overflow-hidden" data-testid="app-container">
@@ -813,6 +818,7 @@ function RootLayoutContent() {
             aria-hidden="true"
           />
         )}
+        {showProjectSwitcher && <ProjectSwitcher />}
         <Sidebar />
         {/* Mobile menu toggle button - only shows when sidebar is closed on mobile */}
         {!sidebarOpen && (

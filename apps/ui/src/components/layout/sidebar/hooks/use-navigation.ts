@@ -45,7 +45,6 @@ interface UseNavigationProps {
   navigate: (opts: NavigateOptions) => void;
   toggleSidebar: () => void;
   handleOpenFolder: () => void;
-  setIsProjectPickerOpen: (value: boolean | ((prev: boolean) => boolean)) => void;
   cyclePrevProject: () => void;
   cycleNextProject: () => void;
   /** Count of unviewed validations to show on GitHub Issues nav item */
@@ -65,7 +64,6 @@ export function useNavigation({
   navigate,
   toggleSidebar,
   handleOpenFolder,
-  setIsProjectPickerOpen,
   cyclePrevProject,
   cycleNextProject,
   unviewedValidationsCount,
@@ -230,15 +228,6 @@ export function useNavigation({
       description: 'Open folder selection dialog',
     });
 
-    // Project picker shortcut - only when we have projects
-    if (projects.length > 0) {
-      shortcutsList.push({
-        key: shortcuts.projectPicker,
-        action: () => setIsProjectPickerOpen((prev) => !prev),
-        description: 'Toggle project picker',
-      });
-    }
-
     // Project cycling shortcuts - only when we have project history
     if (projectHistory.length > 1) {
       shortcutsList.push({
@@ -288,7 +277,6 @@ export function useNavigation({
     cyclePrevProject,
     cycleNextProject,
     navSections,
-    setIsProjectPickerOpen,
   ]);
 
   return {
