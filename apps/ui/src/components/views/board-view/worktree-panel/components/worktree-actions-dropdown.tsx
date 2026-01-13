@@ -217,27 +217,20 @@ export function WorktreeActionsDropdown({
             )}
           </DropdownMenuItem>
         </TooltipWrapper>
-        {!worktree.isMain && (
-          <TooltipWrapper
-            showTooltip={!!gitOpsDisabledReason}
-            tooltipContent={gitOpsDisabledReason}
+        <TooltipWrapper showTooltip={!!gitOpsDisabledReason} tooltipContent={gitOpsDisabledReason}>
+          <DropdownMenuItem
+            onClick={() => canPerformGitOps && onResolveConflicts(worktree)}
+            disabled={!canPerformGitOps}
+            className={cn(
+              'text-xs text-purple-500 focus:text-purple-600',
+              !canPerformGitOps && 'opacity-50 cursor-not-allowed'
+            )}
           >
-            <DropdownMenuItem
-              onClick={() => canPerformGitOps && onResolveConflicts(worktree)}
-              disabled={!canPerformGitOps}
-              className={cn(
-                'text-xs text-purple-500 focus:text-purple-600',
-                !canPerformGitOps && 'opacity-50 cursor-not-allowed'
-              )}
-            >
-              <GitMerge className="w-3.5 h-3.5 mr-2" />
-              Pull & Resolve Conflicts
-              {!canPerformGitOps && (
-                <AlertCircle className="w-3 h-3 ml-auto text-muted-foreground" />
-              )}
-            </DropdownMenuItem>
-          </TooltipWrapper>
-        )}
+            <GitMerge className="w-3.5 h-3.5 mr-2" />
+            Pull & Resolve Conflicts
+            {!canPerformGitOps && <AlertCircle className="w-3 h-3 ml-auto text-muted-foreground" />}
+          </DropdownMenuItem>
+        </TooltipWrapper>
         <DropdownMenuSeparator />
         {/* Open in editor - split button: click main area for default, chevron for other options */}
         {effectiveDefaultEditor && (
@@ -332,7 +325,7 @@ export function WorktreeActionsDropdown({
           </TooltipWrapper>
         )}
         {/* Show PR info and Address Comments button if PR exists */}
-        {!worktree.isMain && hasPR && worktree.pr && (
+        {hasPR && worktree.pr && (
           <>
             <DropdownMenuItem
               onClick={() => {

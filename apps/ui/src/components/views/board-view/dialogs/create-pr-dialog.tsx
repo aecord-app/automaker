@@ -30,6 +30,8 @@ interface CreatePRDialogProps {
   worktree: WorktreeInfo | null;
   projectPath: string | null;
   onCreated: (prUrl?: string) => void;
+  /** Default base branch for the PR (defaults to 'main' if not provided) */
+  defaultBaseBranch?: string;
 }
 
 export function CreatePRDialog({
@@ -38,10 +40,11 @@ export function CreatePRDialog({
   worktree,
   projectPath,
   onCreated,
+  defaultBaseBranch = 'main',
 }: CreatePRDialogProps) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [baseBranch, setBaseBranch] = useState('main');
+  const [baseBranch, setBaseBranch] = useState(defaultBaseBranch);
   const [commitMessage, setCommitMessage] = useState('');
   const [isDraft, setIsDraft] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,7 +62,7 @@ export function CreatePRDialog({
       setTitle('');
       setBody('');
       setCommitMessage('');
-      setBaseBranch('main');
+      setBaseBranch(defaultBaseBranch);
       setIsDraft(false);
       setError(null);
       // Also reset result states when opening for a new worktree
@@ -74,7 +77,7 @@ export function CreatePRDialog({
       setTitle('');
       setBody('');
       setCommitMessage('');
-      setBaseBranch('main');
+      setBaseBranch(defaultBaseBranch);
       setIsDraft(false);
       setError(null);
       setPrUrl(null);
@@ -82,7 +85,7 @@ export function CreatePRDialog({
       setShowBrowserFallback(false);
       operationCompletedRef.current = false;
     }
-  }, [open, worktree?.path]);
+  }, [open, worktree?.path, defaultBaseBranch]);
 
   const handleCreate = async () => {
     if (!worktree) return;

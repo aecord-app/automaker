@@ -328,20 +328,6 @@ export function BoardView() {
     fetchBranches();
   }, [currentProject, worktreeRefreshKey]);
 
-  // Calculate unarchived card counts per branch
-  const branchCardCounts = useMemo(() => {
-    return hookFeatures.reduce(
-      (counts, feature) => {
-        if (feature.status !== 'completed') {
-          const branch = feature.branchName ?? 'main';
-          counts[branch] = (counts[branch] || 0) + 1;
-        }
-        return counts;
-      },
-      {} as Record<string, number>
-    );
-  }, [hookFeatures]);
-
   // Custom collision detection that prioritizes columns over cards
   const collisionDetectionStrategy = useCallback((args: any) => {
     // First, check if pointer is within a column
@@ -425,6 +411,22 @@ export function BoardView() {
   // Use the branch from selectedWorktree, or fall back to main worktree's branch
   const selectedWorktreeBranch =
     currentWorktreeBranch || worktrees.find((w) => w.isMain)?.branch || 'main';
+
+  // Calculate unarchived card counts per branch
+  const branchCardCounts = useMemo(() => {
+    // Use primary worktree branch as default for features without branchName
+    const primaryBranch = worktrees.find((w) => w.isMain)?.branch || 'main';
+    return hookFeatures.reduce(
+      (counts, feature) => {
+        if (feature.status !== 'completed') {
+          const branch = feature.branchName ?? primaryBranch;
+          counts[branch] = (counts[branch] || 0) + 1;
+        }
+        return counts;
+      },
+      {} as Record<string, number>
+    );
+  }, [hookFeatures, worktrees]);
 
   // Helper function to add and select a worktree
   const addAndSelectWorktree = useCallback(
@@ -724,10 +726,11 @@ export function BoardView() {
     [handleAddFeature, handleStartImplementation, defaultSkipTests]
   );
 
-  // Handler for resolving conflicts - creates a feature to pull from origin/main and resolve conflicts
+  // Handler for resolving conflicts - creates a feature to pull from the remote branch and resolve conflicts
   const handleResolveConflicts = useCallback(
     async (worktree: WorktreeInfo) => {
-      const description = `Pull latest from origin/main and resolve conflicts. Merge origin/main into the current branch (${worktree.branch}), resolving any merge conflicts that arise. After resolving conflicts, ensure the code compiles and tests pass.`;
+      const remoteBranch = `origin/${worktree.branch}`;
+      const description = `Pull latest from ${remoteBranch} and resolve conflicts. Merge ${remoteBranch} into the current branch (${worktree.branch}), resolving any merge conflicts that arise. After resolving conflicts, ensure the code compiles and tests pass.`;
 
       // Create the feature
       const featureData = {
@@ -1710,6 +1713,7 @@ export function BoardView() {
         onOpenChange={setShowCreatePRDialog}
         worktree={selectedWorktreeForAction}
         projectPath={currentProject?.path || null}
+        defaultBaseBranch={selectedWorktreeBranch}
         onCreated={(prUrl) => {
           // If a PR was created and we have the worktree branch, update all features on that branch with the PR URL
           if (prUrl && selectedWorktreeForAction?.branch) {

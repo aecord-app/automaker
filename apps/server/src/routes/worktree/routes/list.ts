@@ -13,7 +13,7 @@ import { promisify } from 'util';
 import path from 'path';
 import * as secureFs from '../../../lib/secure-fs.js';
 import { isGitRepo } from '@automaker/git-utils';
-import { getErrorMessage, logError, normalizePath } from '../common.js';
+import { getErrorMessage, logError, normalizePath, execEnv, isGhCliAvailable } from '../common.js';
 import { readAllWorktreeMetadata, type WorktreePRInfo } from '../../../lib/worktree-metadata.js';
 import { createLogger } from '@automaker/utils';
 
@@ -119,6 +119,52 @@ async function scanWorktreesDirectory(
   }
 
   return discovered;
+}
+
+/**
+ * Fetch open PRs from GitHub and create a map of branch name to PR info.
+ * This allows detecting PRs that were created outside the app.
+ */
+async function fetchGitHubPRs(projectPath: string): Promise<Map<string, WorktreePRInfo>> {
+  const prMap = new Map<string, WorktreePRInfo>();
+
+  try {
+    // Check if gh CLI is available
+    const ghAvailable = await isGhCliAvailable();
+    if (!ghAvailable) {
+      return prMap;
+    }
+
+    // Fetch open PRs from GitHub
+    const { stdout } = await execAsync(
+      'gh pr list --state open --json number,title,url,state,headRefName,createdAt --limit 100',
+      { cwd: projectPath, env: execEnv }
+    );
+
+    const prs = JSON.parse(stdout || '[]') as Array<{
+      number: number;
+      title: string;
+      url: string;
+      state: string;
+      headRefName: string;
+      createdAt: string;
+    }>;
+
+    for (const pr of prs) {
+      prMap.set(pr.headRefName, {
+        number: pr.number,
+        url: pr.url,
+        title: pr.title,
+        state: pr.state,
+        createdAt: pr.createdAt,
+      });
+    }
+  } catch (error) {
+    // Silently fail - PR detection is optional
+    logger.warn(`Failed to fetch GitHub PRs: ${getErrorMessage(error)}`);
+  }
+
+  return prMap;
 }
 
 export function createListHandler() {
@@ -241,11 +287,21 @@ export function createListHandler() {
         }
       }
 
-      // Add PR info from metadata for each worktree
+      // Fetch open PRs from GitHub to detect PRs created outside the app
+      const githubPRs = await fetchGitHubPRs(projectPath);
+
+      // Add PR info from metadata or GitHub for each worktree
       for (const worktree of worktrees) {
         const metadata = allMetadata.get(worktree.branch);
         if (metadata?.pr) {
+          // Use stored metadata (more complete info)
           worktree.pr = metadata.pr;
+        } else {
+          // Fall back to GitHub PR detection
+          const githubPR = githubPRs.get(worktree.branch);
+          if (githubPR) {
+            worktree.pr = githubPR;
+          }
         }
       }
 
