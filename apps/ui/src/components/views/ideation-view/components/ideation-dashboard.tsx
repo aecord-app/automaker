@@ -19,6 +19,30 @@ import type { AnalysisSuggestion } from '@automaker/types';
 // Helper for consistent pluralization of "idea/ideas"
 const pluralizeIdea = (count: number) => `idea${count !== 1 ? 's' : ''}`;
 
+// Helper to map priority to Badge variant
+const getPriorityVariant = (
+  priority: string
+):
+  | 'default'
+  | 'secondary'
+  | 'destructive'
+  | 'outline'
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'info' => {
+  switch (priority.toLowerCase()) {
+    case 'high':
+      return 'error';
+    case 'medium':
+      return 'warning';
+    case 'low':
+      return 'info';
+    default:
+      return 'secondary';
+  }
+};
+
 interface IdeationDashboardProps {
   onGenerateIdeas: () => void;
   onAcceptAllReady?: (isReady: boolean, count: number, handler: () => Promise<void>) => void;
@@ -39,37 +63,51 @@ function SuggestionCard({
   isAdding: boolean;
 }) {
   return (
-    <Card className="transition-all hover:border-primary/50">
-      <CardContent className="p-4">
+    <Card className="group transition-all hover:border-primary/50 hover:shadow-sm">
+      <CardContent className="p-5">
         <div className="flex items-start gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-2 mb-1">
-              <h4 className="font-medium shrink-0">{suggestion.title}</h4>
+          <div className="flex-1 min-w-0 space-y-3">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-4">
+                <h4 className="font-semibold text-base leading-tight">{suggestion.title}</h4>
+              </div>
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className="text-xs whitespace-nowrap">
+                <Badge
+                  variant={getPriorityVariant(suggestion.priority)}
+                  className="text-xs font-medium capitalize"
+                >
                   {suggestion.priority}
                 </Badge>
-                <Badge variant="secondary" className="text-xs whitespace-nowrap">
+                <Badge
+                  variant="secondary"
+                  className="text-xs text-muted-foreground bg-secondary/40"
+                >
                   {job.prompt.title}
                 </Badge>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">{suggestion.description}</p>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {suggestion.description}
+            </p>
+
             {suggestion.rationale && (
-              <p className="text-xs text-muted-foreground mt-2 italic">{suggestion.rationale}</p>
+              <div className="relative pl-3 border-l-2 border-primary/20 mt-3 py-1">
+                <p className="text-xs text-muted-foreground/80 italic">{suggestion.rationale}</p>
+              </div>
             )}
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+
+          <div className="flex flex-col gap-2 shrink-0 pt-1">
             <Button
               size="sm"
-              variant="ghost"
-              onClick={onRemove}
+              onClick={onAccept}
               disabled={isAdding}
-              className="text-muted-foreground hover:text-destructive"
+              className={cn(
+                'w-full gap-1.5 shadow-none transition-all',
+                isAdding ? 'opacity-80' : 'hover:ring-2 hover:ring-primary/20'
+              )}
             >
-              <X className="w-4 h-4" />
-            </Button>
-            <Button size="sm" onClick={onAccept} disabled={isAdding} className="gap-1">
               {isAdding ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
@@ -78,6 +116,15 @@ function SuggestionCard({
                   Accept
                 </>
               )}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onRemove}
+              disabled={isAdding}
+              className="w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8"
+            >
+              Dismiss
             </Button>
           </div>
         </div>
@@ -91,19 +138,33 @@ function GeneratingCard({ job }: { job: GenerationJob }) {
   const isError = job.status === 'error';
 
   return (
-    <Card className={cn('transition-all', isError ? 'border-red-500/50' : 'border-blue-500/50')}>
-      <CardContent className="p-4">
+    <Card
+      className={cn(
+        'transition-all',
+        isError ? 'border-destructive/50' : 'border-blue-500/30 bg-blue-50/5 dark:bg-blue-900/5'
+      )}
+    >
+      <CardContent className="p-5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {isError ? (
-              <AlertCircle className="w-5 h-5 text-red-500" />
-            ) : (
-              <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-            )}
+          <div className="flex items-center gap-4">
+            <div
+              className={cn(
+                'w-10 h-10 rounded-full flex items-center justify-center shrink-0',
+                isError ? 'bg-destructive/10 text-destructive' : 'bg-blue-500/10 text-blue-500'
+              )}
+            >
+              {isError ? (
+                <AlertCircle className="w-5 h-5" />
+              ) : (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              )}
+            </div>
             <div>
               <p className="font-medium">{job.prompt.title}</p>
               <p className="text-sm text-muted-foreground">
-                {isError ? job.error || 'Failed to generate' : 'Generating ideas...'}
+                {isError
+                  ? job.error || 'Failed to generate'
+                  : 'Analyzing codebase and generating ideas...'}
               </p>
             </div>
           </div>
@@ -135,7 +196,7 @@ function TagFilter({
   if (tags.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2 py-2">
       {tags.map((tag) => {
         const isSelected = selectedTags.has(tag);
         const count = tagCounts[tag] || 0;
@@ -144,28 +205,31 @@ function TagFilter({
             key={tag}
             onClick={() => onToggleTag(tag)}
             className={cn(
-              'px-3 py-1.5 text-sm rounded-full border transition-all flex items-center gap-1.5',
+              'px-3.5 py-1.5 text-sm rounded-full border shadow-sm transition-all flex items-center gap-2',
               isSelected
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-secondary/50 text-muted-foreground border-border hover:border-primary/50 hover:text-foreground'
+                ? 'bg-primary text-primary-foreground border-primary ring-2 ring-primary/20'
+                : 'bg-card text-muted-foreground border-border hover:border-primary/50 hover:text-foreground hover:bg-accent/50'
             )}
           >
-            {tag}
+            <span className="font-medium">{tag}</span>
             <span
               className={cn(
-                'text-xs',
-                isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground/70'
+                'text-xs py-0.5 px-1.5 rounded-full',
+                isSelected
+                  ? 'bg-primary-foreground/20 text-primary-foreground'
+                  : 'bg-muted text-muted-foreground'
               )}
             >
-              ({count})
+              {count}
             </span>
           </button>
         );
       })}
+      {selectedTags.size > 0 && <div className="h-8 w-px bg-border mx-1" />}
       {selectedTags.size > 0 && (
         <button
           onClick={() => selectedTags.forEach((tag) => onToggleTag(tag))}
-          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
         >
           Clear filters
         </button>
