@@ -143,7 +143,13 @@ export function useGitHubValidationQueryInvalidation(projectPath: string | undef
     if (!projectPath) return;
 
     const api = getElectronAPI();
-    const unsubscribe = api.github?.onValidationEvent((event: IssueValidationEvent) => {
+
+    // Check if GitHub API is available before subscribing
+    if (!api.github?.onValidationEvent) {
+      return;
+    }
+
+    const unsubscribe = api.github.onValidationEvent((event: IssueValidationEvent) => {
       if (event.type === 'validation_complete' || event.type === 'validation_error') {
         // Invalidate all validations for this project
         queryClient.invalidateQueries({

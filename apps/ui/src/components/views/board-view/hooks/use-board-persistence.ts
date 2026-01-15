@@ -1,8 +1,10 @@
 import { useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Feature } from '@/store/app-store';
 import { getElectronAPI } from '@/lib/electron';
 import { useAppStore } from '@/store/app-store';
 import { createLogger } from '@automaker/utils/logger';
+import { queryKeys } from '@/lib/query-keys';
 
 const logger = createLogger('BoardPersistence');
 
@@ -12,6 +14,7 @@ interface UseBoardPersistenceProps {
 
 export function useBoardPersistence({ currentProject }: UseBoardPersistenceProps) {
   const { updateFeature } = useAppStore();
+  const queryClient = useQueryClient();
 
   // Persist feature update to API (replaces saveFeatures)
   const persistFeatureUpdate = useCallback(
@@ -41,12 +44,16 @@ export function useBoardPersistence({ currentProject }: UseBoardPersistenceProps
         );
         if (result.success && result.feature) {
           updateFeature(result.feature.id, result.feature);
+          // Invalidate React Query cache to sync UI
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.features.all(currentProject.path),
+          });
         }
       } catch (error) {
         logger.error('Failed to persist feature update:', error);
       }
     },
-    [currentProject, updateFeature]
+    [currentProject, updateFeature, queryClient]
   );
 
   // Persist feature creation to API
@@ -64,12 +71,16 @@ export function useBoardPersistence({ currentProject }: UseBoardPersistenceProps
         const result = await api.features.create(currentProject.path, feature);
         if (result.success && result.feature) {
           updateFeature(result.feature.id, result.feature);
+          // Invalidate React Query cache to sync UI
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.features.all(currentProject.path),
+          });
         }
       } catch (error) {
         logger.error('Failed to persist feature creation:', error);
       }
     },
-    [currentProject, updateFeature]
+    [currentProject, updateFeature, queryClient]
   );
 
   // Persist feature deletion to API
@@ -85,11 +96,15 @@ export function useBoardPersistence({ currentProject }: UseBoardPersistenceProps
         }
 
         await api.features.delete(currentProject.path, featureId);
+        // Invalidate React Query cache to sync UI
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.features.all(currentProject.path),
+        });
       } catch (error) {
         logger.error('Failed to persist feature deletion:', error);
       }
     },
-    [currentProject]
+    [currentProject, queryClient]
   );
 
   return {

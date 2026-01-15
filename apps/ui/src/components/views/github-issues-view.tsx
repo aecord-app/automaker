@@ -2,6 +2,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { createLogger } from '@automaker/utils/logger';
 import { CircleDot, RefreshCw } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { getElectronAPI, GitHubIssue, IssueValidationResult } from '@/lib/electron';
 import { useAppStore } from '@/store/app-store';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -9,6 +10,7 @@ import { LoadingState } from '@/components/ui/loading-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { cn, pathsEqual } from '@/lib/utils';
 import { toast } from 'sonner';
+import { queryKeys } from '@/lib/query-keys';
 import { useGithubIssues, useIssueValidation } from './github-issues-view/hooks';
 import { IssueRow, IssueDetailPanel, IssuesListHeader } from './github-issues-view/components';
 import { ValidationDialog } from './github-issues-view/dialogs';
@@ -27,6 +29,7 @@ export function GitHubIssuesView() {
     useState<ValidateIssueOptions | null>(null);
 
   const { currentProject, getCurrentWorktree, worktreesByProject } = useAppStore();
+  const queryClient = useQueryClient();
 
   // Model override for validation
   const validationModelOverride = useModelOverride({ phase: 'validationModel' });
@@ -109,6 +112,10 @@ export function GitHubIssuesView() {
 
           const result = await api.features.create(currentProject.path, feature);
           if (result.success) {
+            // Invalidate React Query cache to sync UI
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.features.all(currentProject.path),
+            });
             toast.success(`Created task: ${issue.title}`);
           } else {
             toast.error(result.error || 'Failed to create task');
@@ -119,7 +126,7 @@ export function GitHubIssuesView() {
         toast.error(err instanceof Error ? err.message : 'Failed to create task');
       }
     },
-    [currentProject?.path, currentBranch]
+    [currentProject?.path, currentBranch, queryClient]
   );
 
   if (loading) {
