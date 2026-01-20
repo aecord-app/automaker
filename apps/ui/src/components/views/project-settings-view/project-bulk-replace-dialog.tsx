@@ -121,11 +121,12 @@ export function ProjectBulkReplaceDialog({
   // Find the model from provider that maps to a specific Claude model
   const findModelForClaudeAlias = (
     provider: ClaudeCompatibleProvider | null,
-    claudeAlias: ClaudeModelAlias
+    claudeAlias: ClaudeModelAlias,
+    phase: PhaseModelKey
   ): PhaseModelEntry => {
     if (!provider) {
-      // Anthropic Direct - use Claude model directly
-      return { model: claudeAlias };
+      // Anthropic Direct - reset to default phase model (includes correct thinking levels)
+      return DEFAULT_PHASE_MODELS[phase];
     }
 
     // Find model that maps to this Claude alias
@@ -152,7 +153,7 @@ export function ProjectBulkReplaceDialog({
       const globalEntry = phaseModels[phase] ?? DEFAULT_PHASE_MODELS[phase];
       const currentEntry = projectOverrides[phase] || globalEntry;
       const claudeAlias = getClaudeModelAlias(currentEntry);
-      const newEntry = findModelForClaudeAlias(selectedProviderConfig, claudeAlias);
+      const newEntry = findModelForClaudeAlias(selectedProviderConfig, claudeAlias, phase);
 
       // Get display names
       const getCurrentDisplay = (): string => {
@@ -175,7 +176,9 @@ export function ProjectBulkReplaceDialog({
       };
 
       const isChanged =
-        currentEntry.model !== newEntry.model || currentEntry.providerId !== newEntry.providerId;
+        currentEntry.model !== newEntry.model ||
+        currentEntry.providerId !== newEntry.providerId ||
+        currentEntry.thinkingLevel !== newEntry.thinkingLevel;
 
       return {
         phase,
