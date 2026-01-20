@@ -1029,6 +1029,18 @@ export interface GlobalSettings {
    * Each PhaseModelEntry can specify a providerId for provider-specific models.
    */
   activeClaudeApiProfileId?: string | null;
+
+  /**
+   * Per-worktree auto mode settings
+   * Key: "${projectId}::${branchName ?? '__main__'}"
+   */
+  autoModeByWorktree?: Record<
+    string,
+    {
+      maxConcurrency: number;
+      branchName: string | null;
+    }
+  >;
 }
 
 /**
@@ -1308,6 +1320,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   // Deprecated - kept for migration
   claudeApiProfiles: [],
   activeClaudeApiProfileId: null,
+  autoModeByWorktree: {},
 };
 
 /** Default credentials (empty strings - user must provide API keys) */

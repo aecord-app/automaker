@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { SkeletonPulse } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { CheckCircle2, AlertCircle, RefreshCw, Bot, Cloud } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -73,10 +74,6 @@ interface OpencodeCliStatusProps {
   providers?: OpenCodeProviderInfo[];
   isChecking: boolean;
   onRefresh: () => void;
-}
-
-function SkeletonPulse({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse bg-muted/50 rounded', className)} />;
 }
 
 export function OpencodeCliStatusSkeleton() {

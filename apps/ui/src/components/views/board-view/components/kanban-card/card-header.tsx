@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Feature } from '@/store/app-store';
 import { cn } from '@/lib/utils';
 import { CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,7 +37,7 @@ interface CardHeaderProps {
   onSpawnTask?: () => void;
 }
 
-export function CardHeaderSection({
+export const CardHeaderSection = memo(function CardHeaderSection({
   feature,
   isDraggable,
   isCurrentAutoTask,
@@ -378,4 +378,4 @@ export function CardHeaderSection({
       />
     </CardHeader>
   );
-}
+});

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { SkeletonPulse } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { CheckCircle2, AlertCircle, RefreshCw, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -28,10 +29,6 @@ function getAuthMethodLabel(method: string): string {
     default:
       return method || 'Unknown';
   }
-}
-
-function SkeletonPulse({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse bg-muted/50 rounded', className)} />;
 }
 
 function CodexCliStatusSkeleton() {

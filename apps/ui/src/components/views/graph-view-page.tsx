@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useAppStore, Feature } from '@/store/app-store';
+import { useShallow } from 'zustand/react/shallow';
 import { GraphView } from './graph-view';
 import {
   EditFeatureDialog,
@@ -40,7 +41,20 @@ export function GraphViewPage() {
     addFeatureUseSelectedWorktreeBranch,
     planUseSelectedWorktreeBranch,
     setPlanUseSelectedWorktreeBranch,
-  } = useAppStore();
+  } = useAppStore(
+    useShallow((state) => ({
+      currentProject: state.currentProject,
+      updateFeature: state.updateFeature,
+      getCurrentWorktree: state.getCurrentWorktree,
+      getWorktrees: state.getWorktrees,
+      setWorktrees: state.setWorktrees,
+      setCurrentWorktree: state.setCurrentWorktree,
+      defaultSkipTests: state.defaultSkipTests,
+      addFeatureUseSelectedWorktreeBranch: state.addFeatureUseSelectedWorktreeBranch,
+      planUseSelectedWorktreeBranch: state.planUseSelectedWorktreeBranch,
+      setPlanUseSelectedWorktreeBranch: state.setPlanUseSelectedWorktreeBranch,
+    }))
+  );
 
   // Ensure worktrees are loaded when landing directly on graph view
   useWorktrees({ projectPath: currentProject?.path ?? '' });

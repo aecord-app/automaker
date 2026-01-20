@@ -6,6 +6,7 @@ import { pathsEqual } from '@/lib/utils';
 import { toast } from 'sonner';
 import { getHttpApiClient } from '@/lib/http-api-client';
 import { useIsMobile } from '@/hooks/use-media-query';
+import { useWorktreeInitScript } from '@/hooks/queries';
 import type { WorktreePanelProps, WorktreeInfo } from './types';
 import {
   useWorktrees,
@@ -22,9 +23,10 @@ import {
   BranchSwitchDropdown,
 } from './components';
 import { useAppStore } from '@/store/app-store';
-import { ViewWorktreeChangesDialog } from '../dialogs';
+import { ViewWorktreeChangesDialog, PushToRemoteDialog, MergeWorktreeDialog } from '../dialogs';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Undo2 } from 'lucide-react';
+import { getElectronAPI } from '@/lib/electron';
 
 export function WorktreePanel({
   projectPath,
@@ -35,7 +37,8 @@ export function WorktreePanel({
   onCreateBranch,
   onAddressPRComments,
   onResolveConflicts,
-  onMerge,
+  onCreateMergeConflictResolutionFeature,
+  onBranchDeletedDuringMerge,
   onRemovedWorktrees,
   runningFeatureIds = [],
   features = [],
@@ -66,6 +69,7 @@ export function WorktreePanel({
     filteredBranches,
     aheadCount,
     behindCount,
+    hasRemoteBranch,
     isLoadingBranches,
     branchFilter,
     setBranchFilter,
@@ -85,10 +89,7 @@ export function WorktreePanel({
     handleOpenInIntegratedTerminal,
     handleOpenInEditor,
     handleOpenInExternalTerminal,
-  } = useWorktreeActions({
-    fetchWorktrees,
-    fetchBranches,
-  });
+  } = useWorktreeActions();
 
   const { hasRunningFeatures } = useRunningFeatures({
     runningFeatureIds,
@@ -156,8 +157,9 @@ export function WorktreePanel({
     [currentProject, projectPath, isAutoModeRunningForWorktree]
   );
 
-  // Track whether init script exists for the project
-  const [hasInitScript, setHasInitScript] = useState(false);
+  // Check if init script exists for the project using React Query
+  const { data: initScriptData } = useWorktreeInitScript(projectPath);
+  const hasInitScript = initScriptData?.exists ?? false;
 
   // View changes dialog state
   const [viewChangesDialogOpen, setViewChangesDialogOpen] = useState(false);
@@ -171,24 +173,13 @@ export function WorktreePanel({
   const [logPanelOpen, setLogPanelOpen] = useState(false);
   const [logPanelWorktree, setLogPanelWorktree] = useState<WorktreeInfo | null>(null);
 
-  useEffect(() => {
-    if (!projectPath) {
-      setHasInitScript(false);
-      return;
-    }
+  // Push to remote dialog state
+  const [pushToRemoteDialogOpen, setPushToRemoteDialogOpen] = useState(false);
+  const [pushToRemoteWorktree, setPushToRemoteWorktree] = useState<WorktreeInfo | null>(null);
 
-    const checkInitScript = async () => {
-      try {
-        const api = getHttpApiClient();
-        const result = await api.worktree.getInitScript(projectPath);
-        setHasInitScript(result.success && result.exists);
-      } catch {
-        setHasInitScript(false);
-      }
-    };
-
-    checkInitScript();
-  }, [projectPath]);
+  // Merge branch dialog state
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [mergeWorktree, setMergeWorktree] = useState<WorktreeInfo | null>(null);
 
   const isMobile = useIsMobile();
 
@@ -300,6 +291,54 @@ export function WorktreePanel({
     // Keep logPanelWorktree set for smooth close animation
   }, []);
 
+  // Handle opening the push to remote dialog
+  const handlePushNewBranch = useCallback((worktree: WorktreeInfo) => {
+    setPushToRemoteWorktree(worktree);
+    setPushToRemoteDialogOpen(true);
+  }, []);
+
+  // Handle confirming the push to remote dialog
+  const handleConfirmPushToRemote = useCallback(
+    async (worktree: WorktreeInfo, remote: string) => {
+      try {
+        const api = getElectronAPI();
+        if (!api?.worktree?.push) {
+          toast.error('Push API not available');
+          return;
+        }
+        const result = await api.worktree.push(worktree.path, false, remote);
+        if (result.success && result.result) {
+          toast.success(result.result.message);
+          fetchBranches(worktree.path);
+          fetchWorktrees();
+        } else {
+          toast.error(result.error || 'Failed to push changes');
+        }
+      } catch (error) {
+        toast.error('Failed to push changes');
+      }
+    },
+    [fetchBranches, fetchWorktrees]
+  );
+
+  // Handle opening the merge dialog
+  const handleMerge = useCallback((worktree: WorktreeInfo) => {
+    setMergeWorktree(worktree);
+    setMergeDialogOpen(true);
+  }, []);
+
+  // Handle merge completion - refresh worktrees and reassign features if branch was deleted
+  const handleMerged = useCallback(
+    (mergedWorktree: WorktreeInfo, deletedBranch: boolean) => {
+      fetchWorktrees();
+      // If the branch was deleted, notify parent to reassign features to main
+      if (deletedBranch && onBranchDeletedDuringMerge) {
+        onBranchDeletedDuringMerge(mergedWorktree.branch);
+      }
+    },
+    [fetchWorktrees, onBranchDeletedDuringMerge]
+  );
+
   const mainWorktree = worktrees.find((w) => w.isMain);
   const nonMainWorktrees = worktrees.filter((w) => !w.isMain);
 
@@ -345,6 +384,7 @@ export function WorktreePanel({
             standalone={true}
             aheadCount={aheadCount}
             behindCount={behindCount}
+            hasRemoteBranch={hasRemoteBranch}
             isPulling={isPulling}
             isPushing={isPushing}
             isStartingDevServer={isStartingDevServer}
@@ -355,6 +395,7 @@ export function WorktreePanel({
             onOpenChange={handleActionsDropdownOpenChange(selectedWorktree)}
             onPull={handlePull}
             onPush={handlePush}
+            onPushNewBranch={handlePushNewBranch}
             onOpenInEditor={handleOpenInEditor}
             onOpenInIntegratedTerminal={handleOpenInIntegratedTerminal}
             onOpenInExternalTerminal={handleOpenInExternalTerminal}
@@ -364,7 +405,7 @@ export function WorktreePanel({
             onCreatePR={onCreatePR}
             onAddressPRComments={onAddressPRComments}
             onResolveConflicts={onResolveConflicts}
-            onMerge={onMerge}
+            onMerge={handleMerge}
             onDeleteWorktree={onDeleteWorktree}
             onStartDevServer={handleStartDevServer}
             onStopDevServer={handleStopDevServer}
@@ -435,6 +476,24 @@ export function WorktreePanel({
           onStopDevServer={handleStopDevServer}
           onOpenDevServerUrl={handleOpenDevServerUrl}
         />
+
+        {/* Push to Remote Dialog */}
+        <PushToRemoteDialog
+          open={pushToRemoteDialogOpen}
+          onOpenChange={setPushToRemoteDialogOpen}
+          worktree={pushToRemoteWorktree}
+          onConfirm={handleConfirmPushToRemote}
+        />
+
+        {/* Merge Branch Dialog */}
+        <MergeWorktreeDialog
+          open={mergeDialogOpen}
+          onOpenChange={setMergeDialogOpen}
+          projectPath={projectPath}
+          worktree={mergeWorktree}
+          onMerged={handleMerged}
+          onCreateConflictResolutionFeature={onCreateMergeConflictResolutionFeature}
+        />
       </div>
     );
   }
@@ -468,6 +527,7 @@ export function WorktreePanel({
             isStartingDevServer={isStartingDevServer}
             aheadCount={aheadCount}
             behindCount={behindCount}
+            hasRemoteBranch={hasRemoteBranch}
             gitRepoStatus={gitRepoStatus}
             isAutoModeRunning={isAutoModeRunningForWorktree(mainWorktree)}
             onSelectWorktree={handleSelectWorktree}
@@ -478,6 +538,7 @@ export function WorktreePanel({
             onCreateBranch={onCreateBranch}
             onPull={handlePull}
             onPush={handlePush}
+            onPushNewBranch={handlePushNewBranch}
             onOpenInEditor={handleOpenInEditor}
             onOpenInIntegratedTerminal={handleOpenInIntegratedTerminal}
             onOpenInExternalTerminal={handleOpenInExternalTerminal}
@@ -487,7 +548,7 @@ export function WorktreePanel({
             onCreatePR={onCreatePR}
             onAddressPRComments={onAddressPRComments}
             onResolveConflicts={onResolveConflicts}
-            onMerge={onMerge}
+            onMerge={handleMerge}
             onDeleteWorktree={onDeleteWorktree}
             onStartDevServer={handleStartDevServer}
             onStopDevServer={handleStopDevServer}
@@ -532,6 +593,7 @@ export function WorktreePanel({
                   isStartingDevServer={isStartingDevServer}
                   aheadCount={aheadCount}
                   behindCount={behindCount}
+                  hasRemoteBranch={hasRemoteBranch}
                   gitRepoStatus={gitRepoStatus}
                   isAutoModeRunning={isAutoModeRunningForWorktree(worktree)}
                   onSelectWorktree={handleSelectWorktree}
@@ -542,6 +604,7 @@ export function WorktreePanel({
                   onCreateBranch={onCreateBranch}
                   onPull={handlePull}
                   onPush={handlePush}
+                  onPushNewBranch={handlePushNewBranch}
                   onOpenInEditor={handleOpenInEditor}
                   onOpenInIntegratedTerminal={handleOpenInIntegratedTerminal}
                   onOpenInExternalTerminal={handleOpenInExternalTerminal}
@@ -551,7 +614,7 @@ export function WorktreePanel({
                   onCreatePR={onCreatePR}
                   onAddressPRComments={onAddressPRComments}
                   onResolveConflicts={onResolveConflicts}
-                  onMerge={onMerge}
+                  onMerge={handleMerge}
                   onDeleteWorktree={onDeleteWorktree}
                   onStartDevServer={handleStartDevServer}
                   onStopDevServer={handleStopDevServer}
@@ -621,6 +684,24 @@ export function WorktreePanel({
         worktree={logPanelWorktree}
         onStopDevServer={handleStopDevServer}
         onOpenDevServerUrl={handleOpenDevServerUrl}
+      />
+
+      {/* Push to Remote Dialog */}
+      <PushToRemoteDialog
+        open={pushToRemoteDialogOpen}
+        onOpenChange={setPushToRemoteDialogOpen}
+        worktree={pushToRemoteWorktree}
+        onConfirm={handleConfirmPushToRemote}
+      />
+
+      {/* Merge Branch Dialog */}
+      <MergeWorktreeDialog
+        open={mergeDialogOpen}
+        onOpenChange={setMergeDialogOpen}
+        projectPath={projectPath}
+        worktree={mergeWorktree}
+        onMerged={handleMerged}
+        onCreateConflictResolutionFeature={onCreateMergeConflictResolutionFeature}
       />
     </div>
   );

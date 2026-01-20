@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
 import { createLogger } from '@automaker/utils/logger';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore, FileTreeNode, ProjectAnalysis } from '@/store/app-store';
 import { getElectronAPI } from '@/lib/electron';
+import { queryKeys } from '@/lib/query-keys';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -72,6 +74,7 @@ export function AnalysisView() {
   const [isGeneratingFeatureList, setIsGeneratingFeatureList] = useState(false);
   const [featureListGenerated, setFeatureListGenerated] = useState(false);
   const [featureListError, setFeatureListError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   // Recursively scan directory
   const scanDirectory = useCallback(
@@ -647,6 +650,11 @@ ${Object.entries(projectAnalysis.filesByExtension)
         } as any);
       }
 
+      // Invalidate React Query cache to sync UI
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.features.all(currentProject.path),
+      });
+
       setFeatureListGenerated(true);
     } catch (error) {
       logger.error('Failed to generate feature list:', error);
@@ -656,7 +664,7 @@ ${Object.entries(projectAnalysis.filesByExtension)
     } finally {
       setIsGeneratingFeatureList(false);
     }
-  }, [currentProject, projectAnalysis]);
+  }, [currentProject, projectAnalysis, queryClient]);
 
   // Toggle folder expansion
   const toggleFolder = (path: string) => {

@@ -1,7 +1,11 @@
 // @ts-nocheck
 import { useMemo, useCallback } from 'react';
 import { Feature, useAppStore } from '@/store/app-store';
-import { resolveDependencies, getBlockingDependencies } from '@automaker/dependency-resolver';
+import {
+  createFeatureMap,
+  getBlockingDependenciesFromMap,
+  resolveDependencies,
+} from '@automaker/dependency-resolver';
 
 type ColumnId = Feature['status'];
 
@@ -32,6 +36,8 @@ export function useBoardColumnFeatures({
       verified: [],
       completed: [], // Completed features are shown in the archive modal, not as a column
     };
+    const featureMap = createFeatureMap(features);
+    const runningTaskIds = new Set(runningAutoTasks);
 
     // Filter features by search query (case-insensitive)
     const normalizedQuery = searchQuery.toLowerCase().trim();
@@ -55,7 +61,7 @@ export function useBoardColumnFeatures({
 
     filteredFeatures.forEach((f) => {
       // If feature has a running agent, always show it in "in_progress"
-      const isRunning = runningAutoTasks.includes(f.id);
+      const isRunning = runningTaskIds.has(f.id);
 
       // Check if feature matches the current worktree by branchName
       // Features without branchName are considered unassigned (show only on primary worktree)
@@ -168,7 +174,6 @@ export function useBoardColumnFeatures({
       const { orderedFeatures } = resolveDependencies(map.backlog);
 
       // Get all features to check blocking dependencies against
-      const allFeatures = features;
       const enableDependencyBlocking = useAppStore.getState().enableDependencyBlocking;
 
       // Sort blocked features to the end of the backlog
@@ -178,7 +183,7 @@ export function useBoardColumnFeatures({
         const blocked: Feature[] = [];
 
         for (const f of orderedFeatures) {
-          if (getBlockingDependencies(f, allFeatures).length > 0) {
+          if (getBlockingDependenciesFromMap(f, featureMap).length > 0) {
             blocked.push(f);
           } else {
             unblocked.push(f);
