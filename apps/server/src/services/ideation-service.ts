@@ -696,7 +696,7 @@ export class IdeationService {
         '[IdeationService]'
       );
       const resolved = resolvePhaseModel(phaseResult.phaseModel);
-      // resolvePhaseModel returns the canonical model identifier (e.g., 'sonnet' → 'claude-sonnet-4-5-20250929')
+      // resolvePhaseModel already resolves model aliases internally - no need to call resolveModelString again
       const modelId = resolved.model;
       const claudeCompatibleProvider = phaseResult.provider;
       const credentials = phaseResult.credentials;
