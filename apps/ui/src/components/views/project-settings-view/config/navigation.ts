@@ -6,8 +6,7 @@ import {
   AlertTriangle,
   Workflow,
   Database,
-  FlaskConical,
-  Play,
+  Terminal,
 } from 'lucide-react';
 import type { ProjectSettingsViewId } from '../hooks/use-project-settings-view';
 
@@ -20,8 +19,7 @@ export interface ProjectNavigationItem {
 export const PROJECT_SETTINGS_NAV_ITEMS: ProjectNavigationItem[] = [
   { id: 'identity', label: 'Identity', icon: User },
   { id: 'worktrees', label: 'Worktrees', icon: GitBranch },
-  { id: 'testing', label: 'Testing', icon: FlaskConical },
-  { id: 'devServer', label: 'Dev Server', icon: Play },
+  { id: 'commands', label: 'Commands', icon: Terminal },
   { id: 'theme', label: 'Theme', icon: Palette },
   { id: 'claude', label: 'Models', icon: Workflow },
   { id: 'data', label: 'Data', icon: Database },

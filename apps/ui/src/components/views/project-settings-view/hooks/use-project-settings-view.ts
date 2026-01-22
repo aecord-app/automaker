@@ -4,8 +4,7 @@ export type ProjectSettingsViewId =
   | 'identity'
   | 'theme'
   | 'worktrees'
-  | 'testing'
-  | 'devServer'
+  | 'commands'
   | 'claude'
   | 'data'
   | 'danger';
