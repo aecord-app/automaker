@@ -43,12 +43,37 @@ const logger = createLogger('OverviewView');
 export function OverviewView() {
   const navigate = useNavigate();
   const { overview, isLoading, error, refresh } = useMultiProjectStatus(15000); // Refresh every 15s
-  const { addProject, setCurrentProject } = useAppStore();
+  const { upsertAndSetCurrentProject } = useAppStore();
 
   // Modal state
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showWorkspacePicker, setShowWorkspacePicker] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+
+  const initializeAndOpenProject = useCallback(
+    async (path: string, name: string) => {
+      try {
+        const initResult = await initializeProject(path);
+        if (!initResult.success) {
+          toast.error('Failed to initialize project', {
+            description: initResult.error || 'Unknown error occurred',
+          });
+          return;
+        }
+
+        upsertAndSetCurrentProject(path, name);
+
+        toast.success('Project opened', { description: `Opened ${name}` });
+        navigate({ to: '/board' });
+      } catch (error) {
+        logger.error('[Overview] Failed to open project:', error);
+        toast.error('Failed to open project', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    },
+    [upsertAndSetCurrentProject, navigate]
+  );
 
   const handleOpenProject = useCallback(async () => {
     try {
@@ -78,40 +103,7 @@ export function OverviewView() {
         await initializeAndOpenProject(path, name);
       }
     }
-  }, []);
-
-  const initializeAndOpenProject = useCallback(
-    async (path: string, name: string) => {
-      try {
-        const initResult = await initializeProject(path);
-        if (!initResult.success) {
-          toast.error('Failed to initialize project', {
-            description: initResult.error || 'Unknown error occurred',
-          });
-          return;
-        }
-
-        const project = {
-          id: `project-${Date.now()}`,
-          name,
-          path,
-          lastOpened: new Date().toISOString(),
-        };
-
-        addProject(project);
-        setCurrentProject(project);
-
-        toast.success('Project opened', { description: `Opened ${name}` });
-        navigate({ to: '/board' });
-      } catch (error) {
-        logger.error('[Overview] Failed to open project:', error);
-        toast.error('Failed to open project', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-    },
-    [addProject, setCurrentProject, navigate]
-  );
+  }, [initializeAndOpenProject]);
 
   const handleWorkspaceSelect = useCallback(
     async (path: string, name: string) => {
@@ -149,15 +141,7 @@ export function OverviewView() {
 </project_specification>`
         );
 
-        const project = {
-          id: `project-${Date.now()}`,
-          name: projectName,
-          path: projectPath,
-          lastOpened: new Date().toISOString(),
-        };
-
-        addProject(project);
-        setCurrentProject(project);
+        upsertAndSetCurrentProject(projectPath, projectName);
         setShowNewProjectModal(false);
 
         toast.success('Project created', { description: `Created ${projectName}` });
@@ -171,7 +155,7 @@ export function OverviewView() {
         setIsCreating(false);
       }
     },
-    [addProject, setCurrentProject, navigate]
+    [upsertAndSetCurrentProject, navigate]
   );
 
   const handleCreateFromTemplate = useCallback(
@@ -200,15 +184,7 @@ export function OverviewView() {
           return;
         }
 
-        const project = {
-          id: `project-${Date.now()}`,
-          name: projectName,
-          path: cloneResult.projectPath,
-          lastOpened: new Date().toISOString(),
-        };
-
-        addProject(project);
-        setCurrentProject(project);
+        upsertAndSetCurrentProject(cloneResult.projectPath, projectName);
         setShowNewProjectModal(false);
 
         toast.success('Project created from template', {
@@ -224,7 +200,7 @@ export function OverviewView() {
         setIsCreating(false);
       }
     },
-    [addProject, setCurrentProject, navigate]
+    [upsertAndSetCurrentProject, navigate]
   );
 
   const handleCreateFromCustomUrl = useCallback(
@@ -249,15 +225,7 @@ export function OverviewView() {
           return;
         }
 
-        const project = {
-          id: `project-${Date.now()}`,
-          name: projectName,
-          path: cloneResult.projectPath,
-          lastOpened: new Date().toISOString(),
-        };
-
-        addProject(project);
-        setCurrentProject(project);
+        upsertAndSetCurrentProject(cloneResult.projectPath, projectName);
         setShowNewProjectModal(false);
 
         toast.success('Project created from repository', { description: `Created ${projectName}` });
@@ -271,7 +239,7 @@ export function OverviewView() {
         setIsCreating(false);
       }
     },
-    [addProject, setCurrentProject, navigate]
+    [upsertAndSetCurrentProject, navigate]
   );
 
   return (
