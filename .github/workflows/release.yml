@@ -123,12 +123,9 @@ jobs:
           files: |
             artifacts/macos-builds/*.dmg
             artifacts/macos-builds/*.zip
-            artifacts/macos-builds/*.blockmap
             artifacts/windows-builds/*.exe
-            artifacts/windows-builds/*.blockmap
             artifacts/linux-builds/*.AppImage
             artifacts/linux-builds/*.deb
             artifacts/linux-builds/*.rpm
-            artifacts/linux-builds/*.blockmap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
