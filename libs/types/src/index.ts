@@ -353,3 +353,31 @@ export type { TerminalInfo } from './terminal.js';
 
 // Test runner types
 export type { TestRunnerInfo } from './test-runner.js';
+
+// Provider usage types
+export type {
+  UsageWindow,
+  ProviderPlan,
+  UsageCost,
+  UsageProviderId,
+  BaseProviderUsage,
+  ClaudeProviderUsage,
+  CodexProviderUsage,
+  CursorProviderUsage,
+  GeminiProviderUsage,
+  CopilotProviderUsage,
+  OpenCodeProviderUsage,
+  MiniMaxProviderUsage,
+  GLMProviderUsage,
+  ProviderUsage,
+  AllProvidersUsage,
+  ProviderUsageResponse,
+  ProviderUsageOptions,
+  ProviderDisplayInfo,
+} from './provider-usage.js';
+export {
+  PROVIDER_DISPLAY_INFO,
+  getMaxUsagePercent,
+  getUsageStatusColor,
+  formatResetTime,
+} from './provider-usage.js';

@@ -99,6 +99,12 @@ export const queryKeys = {
     claude: () => ['usage', 'claude'] as const,
     /** Codex API usage */
     codex: () => ['usage', 'codex'] as const,
+    /** All providers usage */
+    all: () => ['usage', 'all'] as const,
+    /** Single provider usage */
+    provider: (providerId: string) => ['usage', 'provider', providerId] as const,
+    /** Provider availability */
+    availability: () => ['usage', 'availability'] as const,
   },
 
   // ============================================

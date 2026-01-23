@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Wand2, GitBranch, ClipboardCheck } from 'lucide-react';
-import { UsagePopover } from '@/components/usage-popover';
+import { ProviderUsageBar } from '@/components/provider-usage-bar';
 import { useAppStore } from '@/store/app-store';
 import { useSetupStore } from '@/store/setup-store';
 import { useIsTablet } from '@/hooks/use-media-query';
@@ -127,8 +127,8 @@ export function BoardHeader({
         <BoardControls isMounted={isMounted} onShowBoardBackground={onShowBoardBackground} />
       </div>
       <div className="flex gap-4 items-center">
-        {/* Usage Popover - show if either provider is authenticated, only on desktop */}
-        {isMounted && !isTablet && (showClaudeUsage || showCodexUsage) && <UsagePopover />}
+        {/* Provider Usage Bar - shows all available providers, only on desktop */}
+        {isMounted && !isTablet && <ProviderUsageBar />}
 
         {/* Tablet/Mobile view: show hamburger menu with all controls */}
         {isMounted && isTablet && (

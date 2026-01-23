@@ -2596,6 +2596,38 @@ export class HttpApiClient implements ElectronAPI {
     },
   };
 
+  // Provider Usage API (unified usage tracking for all providers)
+  providerUsage = {
+    getAll: (
+      refresh = false
+    ): Promise<{
+      success: boolean;
+      data?: import('@automaker/types').AllProvidersUsage;
+      error?: string;
+    }> => {
+      const url = `/api/provider-usage${refresh ? '?refresh=true' : ''}`;
+      return this.get(url);
+    },
+
+    getProvider: (
+      providerId: import('@automaker/types').UsageProviderId,
+      refresh = false
+    ): Promise<{
+      success: boolean;
+      data?: import('@automaker/types').ProviderUsage;
+      error?: string;
+    }> => {
+      const url = `/api/provider-usage/${providerId}${refresh ? '?refresh=true' : ''}`;
+      return this.get(url);
+    },
+
+    getAvailability: (): Promise<{
+      success: boolean;
+      data?: Record<import('@automaker/types').UsageProviderId, boolean>;
+      error?: string;
+    }> => this.get('/api/provider-usage/availability'),
+  };
+
   // Context API
   context = {
     describeImage: (

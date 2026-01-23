@@ -1,7 +1,7 @@
 /**
  * Usage Query Hooks
  *
- * React Query hooks for fetching Claude and Codex API usage data.
+ * React Query hooks for fetching Claude, Codex, and all provider API usage data.
  * These hooks include automatic polling for real-time usage updates.
  */
 
@@ -10,6 +10,7 @@ import { getElectronAPI } from '@/lib/electron';
 import { queryKeys } from '@/lib/query-keys';
 import { STALE_TIMES } from '@/lib/query-client';
 import type { ClaudeUsage, CodexUsage } from '@/store/app-store';
+import type { AllProvidersUsage, UsageProviderId } from '@automaker/types';
 
 /** Polling interval for usage data (60 seconds) */
 const USAGE_POLLING_INTERVAL = 60 * 1000;
@@ -77,6 +78,88 @@ export function useCodexUsage(enabled = true) {
     refetchInterval: enabled ? USAGE_POLLING_INTERVAL : false,
     // Keep previous data while refetching
     placeholderData: (previousData) => previousData,
+    refetchOnWindowFocus: USAGE_REFETCH_ON_FOCUS,
+    refetchOnReconnect: USAGE_REFETCH_ON_RECONNECT,
+  });
+}
+
+/**
+ * Fetch usage data for all enabled AI providers
+ *
+ * @param enabled - Whether the query should run (default: true)
+ * @returns Query result with all providers usage data
+ *
+ * @example
+ * ```tsx
+ * const { data: allUsage, isLoading } = useAllProvidersUsage(isPopoverOpen);
+ * ```
+ */
+export function useAllProvidersUsage(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.usage.all(),
+    queryFn: async (): Promise<AllProvidersUsage> => {
+      const api = getElectronAPI();
+      const result = await api.providerUsage.getAll();
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to fetch provider usage');
+      }
+      return result.data;
+    },
+    enabled,
+    staleTime: STALE_TIMES.USAGE,
+    refetchInterval: enabled ? USAGE_POLLING_INTERVAL : false,
+    placeholderData: (previousData) => previousData,
+    refetchOnWindowFocus: USAGE_REFETCH_ON_FOCUS,
+    refetchOnReconnect: USAGE_REFETCH_ON_RECONNECT,
+  });
+}
+
+/**
+ * Fetch usage data for a specific provider
+ *
+ * @param providerId - The provider to fetch usage for
+ * @param enabled - Whether the query should run (default: true)
+ * @returns Query result with provider usage data
+ */
+export function useProviderUsage(providerId: UsageProviderId, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.usage.provider(providerId),
+    queryFn: async () => {
+      const api = getElectronAPI();
+      const result = await api.providerUsage.getProvider(providerId);
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to fetch provider usage');
+      }
+      return result.data;
+    },
+    enabled,
+    staleTime: STALE_TIMES.USAGE,
+    refetchInterval: enabled ? USAGE_POLLING_INTERVAL : false,
+    placeholderData: (previousData) => previousData,
+    refetchOnWindowFocus: USAGE_REFETCH_ON_FOCUS,
+    refetchOnReconnect: USAGE_REFETCH_ON_RECONNECT,
+  });
+}
+
+/**
+ * Check availability of all providers
+ *
+ * @param enabled - Whether the query should run (default: true)
+ * @returns Query result with provider availability map
+ */
+export function useProviderAvailability(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.usage.availability(),
+    queryFn: async (): Promise<Record<UsageProviderId, boolean>> => {
+      const api = getElectronAPI();
+      const result = await api.providerUsage.getAvailability();
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to fetch provider availability');
+      }
+      return result.data;
+    },
+    enabled,
+    staleTime: STALE_TIMES.STATUS,
     refetchOnWindowFocus: USAGE_REFETCH_ON_FOCUS,
     refetchOnReconnect: USAGE_REFETCH_ON_RECONNECT,
   });

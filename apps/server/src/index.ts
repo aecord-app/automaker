@@ -83,6 +83,8 @@ import { getNotificationService } from './services/notification-service.js';
 import { createEventHistoryRoutes } from './routes/event-history/index.js';
 import { getEventHistoryService } from './services/event-history-service.js';
 import { getTestRunnerService } from './services/test-runner-service.js';
+import { createProviderUsageRoutes } from './routes/provider-usage/index.js';
+import { ProviderUsageTracker } from './services/provider-usage-tracker.js';
 
 // Load environment variables
 dotenv.config();
@@ -236,6 +238,7 @@ const codexModelCacheService = new CodexModelCacheService(DATA_DIR, codexAppServ
 const codexUsageService = new CodexUsageService(codexAppServerService);
 const mcpTestService = new MCPTestService(settingsService);
 const ideationService = new IdeationService(events, settingsService, featureLoader);
+const providerUsageTracker = new ProviderUsageTracker(codexUsageService);
 
 // Initialize DevServerService with event emitter for real-time log streaming
 const devServerService = getDevServerService();
@@ -347,6 +350,7 @@ app.use('/api/pipeline', createPipelineRoutes(pipelineService));
 app.use('/api/ideation', createIdeationRoutes(events, ideationService, featureLoader));
 app.use('/api/notifications', createNotificationsRoutes(notificationService));
 app.use('/api/event-history', createEventHistoryRoutes(eventHistoryService, settingsService));
+app.use('/api/provider-usage', createProviderUsageRoutes(providerUsageTracker));
 
 // Create HTTP server
 const server = createServer(app);

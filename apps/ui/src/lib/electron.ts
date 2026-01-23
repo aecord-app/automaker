@@ -840,6 +840,26 @@ export interface ElectronAPI {
       error?: string;
     }>;
   };
+  providerUsage?: {
+    getAll: (refresh?: boolean) => Promise<{
+      success: boolean;
+      data?: import('@automaker/types').AllProvidersUsage;
+      error?: string;
+    }>;
+    getProvider: (
+      providerId: import('@automaker/types').UsageProviderId,
+      refresh?: boolean
+    ) => Promise<{
+      success: boolean;
+      data?: import('@automaker/types').ProviderUsage;
+      error?: string;
+    }>;
+    getAvailability: () => Promise<{
+      success: boolean;
+      data?: Record<import('@automaker/types').UsageProviderId, boolean>;
+      error?: string;
+    }>;
+  };
   settings?: {
     getStatus: () => Promise<{
       success: boolean;
