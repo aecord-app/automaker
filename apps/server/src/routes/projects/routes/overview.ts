@@ -45,8 +45,12 @@ function computeFeatureCounts(features: Feature[]): FeatureStatusCounts {
         break;
       case 'running':
       case 'generating_spec':
-      case 'waiting_approval':
+      case 'in_progress':
         counts.running++;
+        break;
+      case 'waiting_approval':
+        // waiting_approval means agent finished, needs human review - count as pending
+        counts.pending++;
         break;
       case 'completed':
         counts.completed++;
@@ -153,6 +157,9 @@ export function createOverviewHandler(
       const settings = await settingsService.getGlobalSettings();
       const projectRefs: ProjectRef[] = settings.projects || [];
 
+      // Get all running agents once to count live running features per project
+      const allRunningAgents = await autoModeService.getRunningAgents();
+
       // Collect project statuses in parallel
       const projectStatusPromises = projectRefs.map(async (projectRef): Promise<ProjectStatus> => {
         try {
@@ -164,6 +171,13 @@ export function createOverviewHandler(
           // Get auto-mode status for this project (main worktree, branchName = null)
           const autoModeStatus = autoModeService.getStatusForProject(projectRef.path, null);
           const isAutoModeRunning = autoModeStatus.isAutoLoopRunning;
+
+          // Count live running features for this project (across all branches)
+          // This ensures we only count features that are actually running in memory
+          const liveRunningCount = allRunningAgents.filter(
+            (agent) => agent.projectPath === projectRef.path
+          ).length;
+          featureCounts.running = liveRunningCount;
 
           // Get notification count for this project
           let unreadNotificationCount = 0;
