@@ -115,13 +115,16 @@ export function useAutoModeQueryInvalidation(projectPath: string | undefined) {
       // This allows polling to be disabled when WebSocket events are flowing
       recordGlobalEvent();
 
-      // Invalidate features when agent completes, errors, or receives plan approval
+      // Invalidate features when agent completes, errors, receives plan approval, or pipeline step changes
+      // Note: pipeline_step_started is included to ensure Kanban board immediately reflects
+      // feature moving to custom pipeline columns (fixes GitHub issue #668)
       if (
         event.type === 'auto_mode_feature_complete' ||
         event.type === 'auto_mode_error' ||
         event.type === 'plan_approval_required' ||
         event.type === 'plan_approved' ||
         event.type === 'plan_rejected' ||
+        event.type === 'pipeline_step_started' ||
         event.type === 'pipeline_step_complete'
       ) {
         queryClient.invalidateQueries({
@@ -142,11 +145,12 @@ export function useAutoModeQueryInvalidation(projectPath: string | undefined) {
       }
 
       // Invalidate specific feature when it starts or has phase changes
+      // Note: pipeline_step_started is NOT included here because it already invalidates
+      // features.all() above, which also invalidates child queries (features.single)
       if (
         (event.type === 'auto_mode_feature_start' ||
           event.type === 'auto_mode_phase' ||
-          event.type === 'auto_mode_phase_complete' ||
-          event.type === 'pipeline_step_started') &&
+          event.type === 'auto_mode_phase_complete') &&
         'featureId' in event
       ) {
         queryClient.invalidateQueries({
