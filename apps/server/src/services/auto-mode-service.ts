@@ -552,6 +552,13 @@ export class AutoModeService {
               logger.info(
                 `[resetStuckFeatures] Reset task ${task.id} for feature ${feature.id} from in_progress to pending`
               );
+              // Clear currentTaskId if it points to this reverted task
+              if (feature.currentTaskId === task.id) {
+                feature.currentTaskId = undefined;
+                logger.info(
+                  `[resetStuckFeatures] Cleared currentTaskId for feature ${feature.id} (was pointing to reverted task ${task.id})`
+                );
+              }
             }
           }
         }
