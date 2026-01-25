@@ -4808,6 +4808,13 @@ After generating the revised spec, output:
                   }
                 }
 
+                // Extract and save final summary from multi-task or single-agent execution
+                // Note: saveFeatureSummary already emits auto_mode_summary event
+                const summary = extractSummary(responseText);
+                if (summary) {
+                  await this.saveFeatureSummary(projectPath, featureId, summary);
+                }
+
                 logger.info(`Implementation completed for feature ${featureId}`);
                 // Exit the original stream loop since continuation is done
                 break streamLoop;

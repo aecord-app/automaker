@@ -47,6 +47,8 @@ const SINGLE_FEATURE_INVALIDATION_EVENTS: AutoModeEvent['type'][] = [
   'auto_mode_phase',
   'auto_mode_phase_complete',
   'auto_mode_task_status',
+  'auto_mode_task_started',
+  'auto_mode_task_complete',
   'auto_mode_summary',
 ];
 
