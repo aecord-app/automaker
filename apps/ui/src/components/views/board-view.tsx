@@ -1682,7 +1682,12 @@ export function BoardView() {
         planContent={pendingPlanApproval?.planContent || ''}
         onApprove={handlePlanApprove}
         onReject={handlePlanReject}
+        onRequestChanges={(feedback) => {
+          // Non-admin requested changes — reject with feedback so admin is notified
+          handlePlanReject(feedback);
+        }}
         isLoading={isPlanApprovalLoading}
+        isAdmin={boardUser?.role === 'admin'}
       />
 
       {/* View Plan Dialog (read-only) */}
