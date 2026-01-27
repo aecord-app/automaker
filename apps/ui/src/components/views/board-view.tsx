@@ -1273,6 +1273,29 @@ export function BoardView() {
     [currentProject, setPendingPlanApproval]
   );
 
+  const handleMarkFixed = useCallback(
+    (feature: Feature) => {
+      const now = new Date().toISOString();
+      const user = boardUser?.username || boardUser?.id || 'unknown';
+      const logEntry = {
+        action: 'marked_fixed',
+        timestamp: now,
+        user,
+        details: feature.error ? `Auto-resolved error: ${feature.error}` : 'Marked as fixed',
+      };
+      updateFeature(feature.id, {
+        status: 'completed',
+        resolution: 'fixed',
+        resolvedBy: user,
+        resolvedAt: now,
+        error: undefined,
+        developmentLog: [...(feature.developmentLog || []), logEntry],
+      } as Partial<Feature>);
+      toast.success('Feature marked as fixed');
+    },
+    [boardUser, updateFeature]
+  );
+
   if (!currentProject) {
     return (
       <div className="flex-1 flex items-center justify-center" data-testid="board-view-no-project">
@@ -1418,6 +1441,7 @@ export function BoardView() {
                 onComplete: handleCompleteFeature,
                 onViewPlan: (feature) => setViewPlanFeature(feature),
                 onApprovePlan: handleOpenApprovalDialog,
+                onMarkFixed: handleMarkFixed,
                 onSpawnTask: (feature) => {
                   setSpawnParentFeature(feature);
                   setShowAddDialog(true);
@@ -1457,6 +1481,7 @@ export function BoardView() {
               onImplement={handleStartImplementation}
               onViewPlan={(feature) => setViewPlanFeature(feature)}
               onApprovePlan={handleOpenApprovalDialog}
+              onMarkFixed={handleMarkFixed}
               onSpawnTask={(feature) => {
                 setSpawnParentFeature(feature);
                 setShowAddDialog(true);

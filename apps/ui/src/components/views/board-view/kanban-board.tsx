@@ -43,6 +43,7 @@ interface KanbanBoardProps {
   onImplement: (feature: Feature) => void;
   onViewPlan: (feature: Feature) => void;
   onApprovePlan: (feature: Feature) => void;
+  onMarkFixed: (feature: Feature) => void;
   onSpawnTask?: (feature: Feature) => void;
   featuresWithContext: Set<string>;
   runningAutoTasks: string[];
@@ -279,6 +280,7 @@ export function KanbanBoard({
   onImplement,
   onViewPlan,
   onApprovePlan,
+  onMarkFixed,
   onSpawnTask,
   featuresWithContext,
   runningAutoTasks,
@@ -554,6 +556,7 @@ export function KanbanBoard({
                                       onImplement={() => onImplement(feature)}
                                       onViewPlan={() => onViewPlan(feature)}
                                       onApprovePlan={() => onApprovePlan(feature)}
+                                      onMarkFixed={() => onMarkFixed(feature)}
                                       onSpawnTask={() => onSpawnTask?.(feature)}
                                       hasContext={featuresWithContext.has(feature.id)}
                                       isCurrentAutoTask={runningAutoTasks.includes(feature.id)}
@@ -596,6 +599,7 @@ export function KanbanBoard({
                                 onImplement={() => onImplement(feature)}
                                 onViewPlan={() => onViewPlan(feature)}
                                 onApprovePlan={() => onApprovePlan(feature)}
+                                onMarkFixed={() => onMarkFixed(feature)}
                                 onSpawnTask={() => onSpawnTask?.(feature)}
                                 hasContext={featuresWithContext.has(feature.id)}
                                 isCurrentAutoTask={runningAutoTasks.includes(feature.id)}

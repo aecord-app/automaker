@@ -41,6 +41,7 @@ export interface ListViewActionHandlers {
   onComplete?: (feature: Feature) => void;
   onViewPlan?: (feature: Feature) => void;
   onApprovePlan?: (feature: Feature) => void;
+  onMarkFixed?: (feature: Feature) => void;
   onSpawnTask?: (feature: Feature) => void;
 }
 

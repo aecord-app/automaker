@@ -58,6 +58,7 @@ export type {
   FeatureTextFilePath,
   FeatureStatus,
   DescriptionHistoryEntry,
+  DevelopmentLogEntry,
   // AECORD Task Classification types
   TaskType,
   TaskPriority,

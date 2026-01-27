@@ -52,6 +52,7 @@ interface KanbanCardProps {
   onComplete?: () => void;
   onViewPlan?: () => void;
   onApprovePlan?: () => void;
+  onMarkFixed?: () => void;
   onSpawnTask?: () => void;
   hasContext?: boolean;
   isCurrentAutoTask?: boolean;
@@ -86,6 +87,7 @@ export const KanbanCard = memo(function KanbanCard({
   onComplete,
   onViewPlan,
   onApprovePlan,
+  onMarkFixed,
   onSpawnTask,
   hasContext,
   isCurrentAutoTask,
@@ -287,6 +289,7 @@ export const KanbanCard = memo(function KanbanCard({
           onComplete={onComplete}
           onViewPlan={onViewPlan}
           onApprovePlan={onApprovePlan}
+          onMarkFixed={onMarkFixed}
         />
       </CardContent>
     </Card>

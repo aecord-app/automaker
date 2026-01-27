@@ -315,7 +315,34 @@ export interface Feature {
    */
   createdBy?: string;
 
+  /**
+   * Resolution status when a feature is marked as resolved
+   */
+  resolution?: 'fixed' | 'wontfix' | 'duplicate' | 'auto-resolved';
+
+  /**
+   * Who resolved the feature
+   */
+  resolvedBy?: string;
+
+  /**
+   * ISO timestamp when the feature was resolved
+   */
+  resolvedAt?: string;
+
+  /**
+   * Development log entries tracking key status changes
+   */
+  developmentLog?: DevelopmentLogEntry[];
+
   [key: string]: unknown; // Keep catch-all for extensibility
+}
+
+export interface DevelopmentLogEntry {
+  action: string;
+  timestamp: string;
+  user?: string;
+  details?: string;
 }
 
 export type FeatureStatus = 'pending' | 'running' | 'completed' | 'failed' | 'verified';

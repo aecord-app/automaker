@@ -12,6 +12,7 @@ import {
   Eye,
   Wand2,
   Archive,
+  BadgeCheck,
 } from 'lucide-react';
 
 interface CardActionsProps {
@@ -32,6 +33,7 @@ interface CardActionsProps {
   onComplete?: () => void;
   onViewPlan?: () => void;
   onApprovePlan?: () => void;
+  onMarkFixed?: () => void;
 }
 
 export const CardActions = memo(function CardActions({
@@ -52,6 +54,7 @@ export const CardActions = memo(function CardActions({
   onComplete,
   onViewPlan,
   onApprovePlan,
+  onMarkFixed,
 }: CardActionsProps) {
   // Hide all actions when in selection mode
   if (isSelectionMode) {
@@ -321,6 +324,23 @@ export const CardActions = memo(function CardActions({
             </Button>
           )}
         </>
+      )}
+      {/* Mark as Fixed - shown when feature has error, for admin */}
+      {!isCurrentAutoTask && isAdmin && feature.error && onMarkFixed && (
+        <Button
+          variant="default"
+          size="sm"
+          className="flex-1 h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMarkFixed();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          data-testid={`mark-fixed-${feature.id}`}
+        >
+          <BadgeCheck className="w-3 h-3 mr-1" />
+          Mark Fixed
+        </Button>
       )}
       {!isCurrentAutoTask &&
         ['backlog', 'pending_approval', 'approved'].includes(feature.status) && (
