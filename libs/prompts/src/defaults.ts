@@ -194,7 +194,21 @@ export const DEFAULT_AUTO_MODE_FEATURE_PROMPT_TEMPLATE = `## Feature Implementat
 
 **Feature ID:** {{featureId}}
 **Title:** {{title}}
+{{#if taskType}}
+**Task Type:** {{taskType}}
+{{/if}}
+{{#if taskPriority}}
+**Priority:** {{taskPriority}}
+{{/if}}
+{{#if category}}
+**Category:** {{category}}
+{{/if}}
 **Description:** {{description}}
+
+{{#if taskTypeGuidance}}
+**Task Type Guidance:**
+{{taskTypeGuidance}}
+{{/if}}
 
 {{#if spec}}
 **Specification:**

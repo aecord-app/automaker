@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { COLUMNS, isPipelineStatus } from '../../constants';
+import { AECORD_COLUMNS, isPipelineStatus } from '../../constants';
 import type { FeatureStatusWithPipeline, PipelineConfig } from '@automaker/types';
 
 /**
@@ -102,7 +102,7 @@ function getStatusDisplay(
   }
 
   // Try to find from COLUMNS constant
-  const column = COLUMNS.find((c) => c.id === status);
+  const column = AECORD_COLUMNS.find((c) => c.id === status);
   if (column) {
     return {
       label: column.title,

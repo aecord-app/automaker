@@ -4,7 +4,15 @@ import { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { Feature } from '@/store/app-store';
 import { useAppStore } from '@/store/app-store';
 import { toast } from 'sonner';
-import { COLUMNS, ColumnId } from '../constants';
+import {
+  COLUMNS,
+  AECORD_COLUMNS,
+  ColumnId,
+  requiresAdminForTransition,
+  getAllowedTransitions,
+} from '../constants';
+import { useBoardPermissions } from './use-board-permissions';
+import type { FeatureStatusWithPipeline } from '@automaker/types';
 
 const logger = createLogger('BoardDragDrop');
 
@@ -19,6 +27,8 @@ interface UseBoardDragDropProps {
   runningAutoTasks: string[];
   persistFeatureUpdate: (featureId: string, updates: Partial<Feature>) => Promise<void>;
   handleStartImplementation: (feature: Feature) => Promise<boolean>;
+  /** AECORD: Enable approval workflow mode */
+  useAecordWorkflow?: boolean;
 }
 
 export function useBoardDragDrop({
@@ -27,12 +37,17 @@ export function useBoardDragDrop({
   runningAutoTasks,
   persistFeatureUpdate,
   handleStartImplementation,
+  useAecordWorkflow = false,
 }: UseBoardDragDropProps) {
   const [activeFeature, setActiveFeature] = useState<Feature | null>(null);
   const [pendingDependencyLink, setPendingDependencyLink] = useState<PendingDependencyLink | null>(
     null
   );
   const { moveFeature, updateFeature } = useAppStore();
+  const { canMoveFeature, isAdmin, canApprove } = useBoardPermissions();
+
+  // Select columns based on workflow mode
+  const activeColumns = useAecordWorkflow ? AECORD_COLUMNS : COLUMNS;
 
   // Note: getOrCreateWorktreeForFeature removed - worktrees are now created server-side
   // at execution time based on feature.branchName
@@ -172,10 +187,10 @@ export function useBoardDragDrop({
 
       let targetStatus: ColumnId | null = null;
 
-      // Check if we dropped on a column
-      const column = COLUMNS.find((c) => c.id === overId);
+      // Check if we dropped on a column (use active columns based on workflow mode)
+      const column = activeColumns.find((c) => c.id === overId);
       if (column) {
-        targetStatus = column.id;
+        targetStatus = column.id as ColumnId;
       } else {
         // Dropped on another feature - find its column
         const overFeature = features.find((f) => f.id === overId);
@@ -189,8 +204,122 @@ export function useBoardDragDrop({
       // Same column, nothing to do
       if (targetStatus === draggedFeature.status) return;
 
+      // AECORD: Check if this transition is allowed based on workflow and permissions
+      if (useAecordWorkflow) {
+        const fromStatus = draggedFeature.status as FeatureStatusWithPipeline;
+        const toStatus = targetStatus as FeatureStatusWithPipeline;
+
+        // Check if transition requires admin permission
+        if (requiresAdminForTransition(fromStatus, toStatus) && !isAdmin) {
+          toast.error('Permission denied', {
+            description: 'Only admins can approve or reject tasks.',
+          });
+          return;
+        }
+
+        // Check if transition is valid in AECORD workflow
+        const allowedTransitions = getAllowedTransitions(fromStatus);
+        if (!allowedTransitions.includes(toStatus)) {
+          toast.error('Invalid transition', {
+            description: `Cannot move from ${fromStatus} to ${toStatus} in this workflow.`,
+          });
+          return;
+        }
+
+        // Check if user can move this specific feature
+        if (!canMoveFeature(draggedFeature, fromStatus, toStatus)) {
+          toast.error('Permission denied', {
+            description: 'You do not have permission to move this task.',
+          });
+          return;
+        }
+      }
+
       // Handle different drag scenarios
       // Note: Worktrees are created server-side at execution time based on feature.branchName
+
+      // AECORD Workflow transitions
+      if (useAecordWorkflow) {
+        const fromStatus = draggedFeature.status as FeatureStatusWithPipeline;
+        const toStatus = targetStatus as FeatureStatusWithPipeline;
+
+        // Handle AECORD-specific transitions
+        if (fromStatus === 'backlog' && toStatus === 'pending_approval') {
+          // Submit for approval
+          moveFeature(featureId, 'pending_approval');
+          persistFeatureUpdate(featureId, {
+            status: 'pending_approval',
+            approvalStatus: 'pending',
+          });
+          toast.success('Submitted for approval', {
+            description: `Task submitted for admin review: ${draggedFeature.description.slice(0, 40)}...`,
+          });
+          return;
+        }
+
+        if (fromStatus === 'pending_approval' && toStatus === 'approved') {
+          // Admin approval
+          moveFeature(featureId, 'approved');
+          persistFeatureUpdate(featureId, {
+            status: 'approved',
+            approvalStatus: 'approved',
+            approvedAt: new Date().toISOString(),
+          });
+          toast.success('Task approved', {
+            description: `Approved and ready for implementation: ${draggedFeature.description.slice(0, 40)}...`,
+          });
+          return;
+        }
+
+        if (fromStatus === 'pending_approval' && toStatus === 'backlog') {
+          // Rejection (admin moves back to backlog)
+          moveFeature(featureId, 'backlog');
+          persistFeatureUpdate(featureId, {
+            status: 'backlog',
+            approvalStatus: 'rejected',
+          });
+          toast.info('Task returned to backlog', {
+            description: `Task needs revision: ${draggedFeature.description.slice(0, 40)}...`,
+          });
+          return;
+        }
+
+        if (fromStatus === 'approved' && toStatus === 'in_progress') {
+          // Start implementation on approved task
+          await handleStartImplementation(draggedFeature);
+          return;
+        }
+
+        if (fromStatus === 'in_progress' && toStatus === 'waiting_review') {
+          // Complete implementation, submit for review
+          moveFeature(featureId, 'waiting_review');
+          persistFeatureUpdate(featureId, { status: 'waiting_review' });
+          toast.success('Implementation complete', {
+            description: `Submitted for review: ${draggedFeature.description.slice(0, 40)}...`,
+          });
+          return;
+        }
+
+        if (fromStatus === 'waiting_review' && toStatus === 'verified') {
+          // Verify the implementation
+          moveFeature(featureId, 'verified');
+          persistFeatureUpdate(featureId, {
+            status: 'verified',
+            justFinishedAt: undefined,
+          });
+          toast.success('Task verified', {
+            description: `Verified: ${draggedFeature.description.slice(0, 40)}...`,
+          });
+          return;
+        }
+
+        // Generic fallback for other valid AECORD transitions
+        moveFeature(featureId, targetStatus);
+        persistFeatureUpdate(featureId, { status: targetStatus });
+        return;
+      }
+
+      // Standard (non-AECORD) workflow transitions
       if (draggedFeature.status === 'backlog') {
         // From backlog
         if (targetStatus === 'in_progress') {
@@ -311,6 +440,10 @@ export function useBoardDragDrop({
       updateFeature,
       persistFeatureUpdate,
       handleStartImplementation,
+      useAecordWorkflow,
+      activeColumns,
+      isAdmin,
+      canMoveFeature,
     ]
   );
 

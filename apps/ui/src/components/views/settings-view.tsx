@@ -28,6 +28,8 @@ import { MCPServersSection } from './settings-view/mcp-servers';
 import { PromptCustomizationSection } from './settings-view/prompts';
 import { EventHooksSection } from './settings-view/event-hooks';
 import { ImportExportDialog } from './settings-view/components/import-export-dialog';
+import { RolePermissionsManager } from '@/components/settings/role-permissions-manager';
+import { TeamProjectsManager } from '@/components/settings/team-projects-manager';
 import type { Theme } from './settings-view/shared/types';
 
 // Breakpoint constant for mobile (matches Tailwind lg breakpoint)
@@ -190,6 +192,10 @@ export function SettingsView() {
         );
       case 'developer':
         return <DeveloperSection />;
+      case 'role-permissions':
+        return <RolePermissionsManager />;
+      case 'team-projects':
+        return <TeamProjectsManager />;
       default:
         return <ApiKeysSection />;
     }

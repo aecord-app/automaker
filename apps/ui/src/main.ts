@@ -499,6 +499,8 @@ async function startServer(): Promise<void> {
     NODE_PATH: serverNodeModules,
     // Pass API key to server for CSRF protection
     AUTOMAKER_API_KEY: apiKey!,
+    // Auto-login to skip API key prompt (team JWT auth handles security)
+    AUTOMAKER_AUTO_LOGIN: 'true',
     // Only set ALLOWED_ROOT_DIRECTORY if explicitly provided in environment
     // If not set, server will allow access to all paths
     ...(process.env.ALLOWED_ROOT_DIRECTORY && {

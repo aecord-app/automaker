@@ -9,7 +9,7 @@ import { ListHeader } from './list-header';
 import { ListRow, sortFeatures } from './list-row';
 import { createRowActionHandlers, type RowActionHandlers } from './row-actions';
 import { getStatusLabel, getStatusOrder } from './status-badge';
-import { getColumnsWithPipeline } from '../../constants';
+import { getAecordColumnsWithPipeline } from '../../constants';
 import type { SortConfig, SortColumn } from '../../hooks/use-list-view-state';
 
 /** Empty set constant to avoid creating new instances on each render */
@@ -197,7 +197,7 @@ export const ListView = memo(function ListView({
 
   // Generate status groups from columnFeaturesMap
   const statusGroups = useMemo<StatusGroup[]>(() => {
-    const columns = getColumnsWithPipeline(pipelineConfig);
+    const columns = getAecordColumnsWithPipeline(pipelineConfig);
     const groups: StatusGroup[] = [];
 
     for (const column of columns) {

@@ -31,18 +31,26 @@ export function createFeaturesRoutes(
     validatePathParams('projectPath'),
     createCreateHandler(featureLoader, events)
   );
-  router.post('/update', validatePathParams('projectPath'), createUpdateHandler(featureLoader));
+  router.post(
+    '/update',
+    validatePathParams('projectPath'),
+    createUpdateHandler(featureLoader, events)
+  );
   router.post(
     '/bulk-update',
     validatePathParams('projectPath'),
-    createBulkUpdateHandler(featureLoader)
+    createBulkUpdateHandler(featureLoader, events)
   );
   router.post(
     '/bulk-delete',
     validatePathParams('projectPath'),
-    createBulkDeleteHandler(featureLoader)
+    createBulkDeleteHandler(featureLoader, events)
   );
-  router.post('/delete', validatePathParams('projectPath'), createDeleteHandler(featureLoader));
+  router.post(
+    '/delete',
+    validatePathParams('projectPath'),
+    createDeleteHandler(featureLoader, events)
+  );
   router.post('/agent-output', createAgentOutputHandler(featureLoader));
   router.post('/raw-output', createRawOutputHandler(featureLoader));
   router.post('/generate-title', createGenerateTitleHandler(settingsService));

@@ -1663,6 +1663,23 @@ export class HttpApiClient implements ElectronAPI {
       this.post('/api/features/bulk-update', { projectPath, featureIds, updates }),
     bulkDelete: (projectPath: string, featureIds: string[]) =>
       this.post('/api/features/bulk-delete', { projectPath, featureIds }),
+
+    // Real-time event subscriptions for multi-user sync
+    onFeatureCreated: (callback: (payload: any) => void): (() => void) => {
+      return this.subscribeToEvent('feature:created', callback as EventCallback);
+    },
+    onFeatureUpdated: (callback: (payload: any) => void): (() => void) => {
+      return this.subscribeToEvent('feature:updated', callback as EventCallback);
+    },
+    onFeatureDeleted: (callback: (payload: any) => void): (() => void) => {
+      return this.subscribeToEvent('feature:deleted', callback as EventCallback);
+    },
+    onFeatureBulkUpdated: (callback: (payload: any) => void): (() => void) => {
+      return this.subscribeToEvent('feature:bulk-updated', callback as EventCallback);
+    },
+    onFeatureBulkDeleted: (callback: (payload: any) => void): (() => void) => {
+      return this.subscribeToEvent('feature:bulk-deleted', callback as EventCallback);
+    },
   };
 
   // Auto Mode API

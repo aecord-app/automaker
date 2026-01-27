@@ -4,6 +4,7 @@
 
 import type { Request, Response } from 'express';
 import { FeatureLoader } from '../../../services/feature-loader.js';
+import type { EventEmitter } from '../../../lib/events.js';
 import type { Feature } from '@automaker/types';
 import { getErrorMessage, logError } from '../common.js';
 
@@ -19,7 +20,7 @@ interface BulkUpdateResult {
   error?: string;
 }
 
-export function createBulkUpdateHandler(featureLoader: FeatureLoader) {
+export function createBulkUpdateHandler(featureLoader: FeatureLoader, events?: EventEmitter) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, featureIds, updates } = req.body as BulkUpdateRequest;
@@ -78,6 +79,14 @@ export function createBulkUpdateHandler(featureLoader: FeatureLoader) {
 
       const successCount = results.filter((r) => r.success).length;
       const failureCount = results.filter((r) => !r.success).length;
+
+      // Emit event for real-time sync
+      if (events && successCount > 0) {
+        events.emit('feature:bulk-updated', {
+          featureIds: results.filter((r) => r.success).map((r) => r.featureId),
+          projectPath,
+        });
+      }
 
       res.json({
         success: failureCount === 0,

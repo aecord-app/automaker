@@ -9,6 +9,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '@/store/app-store';
 import { getElectronAPI } from '@/lib/electron';
+import { getHttpApiClient } from '@/lib/http-api-client';
 import { toast } from 'sonner';
 import { createLogger } from '@automaker/utils/logger';
 import { useFeatures } from '@/hooks/queries';
@@ -151,6 +152,49 @@ export function useBoardFeatures({ currentProject }: UseBoardFeaturesProps) {
 
     return unsubscribe;
   }, [currentProject]);
+
+  // Subscribe to WebSocket feature events for multi-user real-time sync
+  useEffect(() => {
+    if (!currentProject) return;
+
+    const api = getHttpApiClient();
+    const projectPath = currentProject.path;
+
+    const unsubs = [
+      api.features.onFeatureCreated((payload: any) => {
+        if (payload.projectPath === projectPath) {
+          logger.info('[BoardFeatures] Feature created by another user, reloading...');
+          queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+        }
+      }),
+      api.features.onFeatureUpdated((payload: any) => {
+        if (payload.projectPath === projectPath) {
+          logger.info('[BoardFeatures] Feature updated by another user, reloading...');
+          queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+        }
+      }),
+      api.features.onFeatureDeleted((payload: any) => {
+        if (payload.projectPath === projectPath) {
+          logger.info('[BoardFeatures] Feature deleted by another user, reloading...');
+          queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+        }
+      }),
+      api.features.onFeatureBulkUpdated((payload: any) => {
+        if (payload.projectPath === projectPath) {
+          logger.info('[BoardFeatures] Features bulk-updated, reloading...');
+          queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+        }
+      }),
+      api.features.onFeatureBulkDeleted((payload: any) => {
+        if (payload.projectPath === projectPath) {
+          logger.info('[BoardFeatures] Features bulk-deleted, reloading...');
+          queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+        }
+      }),
+    ];
+
+    return () => unsubs.forEach((unsub) => unsub());
+  }, [currentProject, queryClient]);
 
   // Check for interrupted features on mount
   useEffect(() => {

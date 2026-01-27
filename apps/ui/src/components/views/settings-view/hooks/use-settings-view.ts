@@ -21,7 +21,9 @@ export type SettingsViewId =
   | 'account'
   | 'security'
   | 'developer'
-  | 'danger';
+  | 'danger'
+  | 'role-permissions'
+  | 'team-projects';
 
 interface UseSettingsViewOptions {
   initialView?: SettingsViewId;

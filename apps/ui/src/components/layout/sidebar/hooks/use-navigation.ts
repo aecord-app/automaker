@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import type { NavigateOptions } from '@tanstack/react-router';
 import {
   FileText,
@@ -18,6 +18,9 @@ import type { NavSection, NavItem } from '../types';
 import type { KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts';
 import type { Project } from '@/lib/electron';
 import { getElectronAPI } from '@/lib/electron';
+import type { FeatureId } from '@automaker/types';
+import { useAuthStore } from '@/store/auth-store';
+import { useRolePermissions } from '@/hooks/use-role-permissions';
 
 interface UseNavigationProps {
   shortcuts: {
@@ -79,6 +82,21 @@ export function useNavigation({
   // Track if current project has a GitHub remote
   const [hasGitHubRemote, setHasGitHubRemote] = useState(false);
 
+  // Get current user for role-based filtering
+  const user = useAuthStore((state) => state.user);
+
+  // Use the role permissions hook to get permissions from server
+  const { hasFeatureAccess } = useRolePermissions();
+
+  // Check if user has access to a feature
+  const canAccess = useCallback(
+    (featureId: FeatureId): boolean => {
+      if (!user?.role) return false;
+      return hasFeatureAccess(featureId);
+    },
+    [user?.role, hasFeatureAccess]
+  );
+
   useEffect(() => {
     async function checkGitHubRemote() {
       if (!currentProject?.path) {
@@ -130,8 +148,12 @@ export function useNavigation({
       },
     ];
 
-    // Filter out hidden items
+    // Filter out hidden items and items user doesn't have access to
     const visibleToolsItems = allToolsItems.filter((item) => {
+      // Check role-based access first
+      if (!canAccess(item.id as FeatureId)) {
+        return false;
+      }
       if (item.id === 'spec' && hideSpecEditor) {
         return false;
       }
@@ -141,8 +163,8 @@ export function useNavigation({
       return true;
     });
 
-    // Build project items - Terminal is conditionally included
-    const projectItems: NavItem[] = [
+    // Build project items - filter by role permissions
+    const allProjectItems: NavItem[] = [
       {
         id: 'board',
         label: 'Kanban Board',
@@ -161,70 +183,101 @@ export function useNavigation({
         icon: Bot,
         shortcut: shortcuts.agent,
       },
-    ];
-
-    // Add Terminal to Project section if not hidden
-    if (!hideTerminal) {
-      projectItems.push({
+      {
         id: 'terminal',
         label: 'Terminal',
         icon: Terminal,
         shortcut: shortcuts.terminal,
-      });
-    }
-
-    const sections: NavSection[] = [
-      {
-        label: 'Project',
-        items: projectItems,
-      },
-      {
-        label: 'Tools',
-        items: visibleToolsItems,
       },
     ];
 
-    // Add GitHub section if project has a GitHub remote
-    if (hasGitHubRemote) {
+    // Filter project items by role access and settings
+    const projectItems = allProjectItems.filter((item) => {
+      if (!canAccess(item.id as FeatureId)) {
+        return false;
+      }
+      if (item.id === 'terminal' && hideTerminal) {
+        return false;
+      }
+      return true;
+    });
+
+    const sections: NavSection[] = [];
+
+    // Only add sections if they have visible items
+    if (projectItems.length > 0) {
       sections.push({
-        label: 'GitHub',
-        items: [
-          {
-            id: 'github-issues',
-            label: 'Issues',
-            icon: CircleDot,
-            shortcut: shortcuts.githubIssues,
-            count: unviewedValidationsCount,
-          },
-          {
-            id: 'github-prs',
-            label: 'Pull Requests',
-            icon: GitPullRequest,
-            shortcut: shortcuts.githubPrs,
-          },
-        ],
+        label: 'Project',
+        items: projectItems,
       });
     }
 
-    // Add Notifications and Project Settings as a standalone section (no label for visual separation)
-    sections.push({
-      label: '',
-      items: [
-        {
-          id: 'notifications',
-          label: 'Notifications',
-          icon: Bell,
-          shortcut: shortcuts.notifications,
-          count: unreadNotificationsCount,
-        },
-        {
-          id: 'project-settings',
-          label: 'Project Settings',
-          icon: Settings,
-          shortcut: shortcuts.projectSettings,
-        },
-      ],
-    });
+    if (visibleToolsItems.length > 0) {
+      sections.push({
+        label: 'Tools',
+        items: visibleToolsItems,
+      });
+    }
+
+    // Add GitHub section if project has a GitHub remote and user has access
+    if (hasGitHubRemote) {
+      const githubItems: NavItem[] = [];
+
+      if (canAccess('github-issues')) {
+        githubItems.push({
+          id: 'github-issues',
+          label: 'Issues',
+          icon: CircleDot,
+          shortcut: shortcuts.githubIssues,
+          count: unviewedValidationsCount,
+        });
+      }
+
+      if (canAccess('github-prs')) {
+        githubItems.push({
+          id: 'github-prs',
+          label: 'Pull Requests',
+          icon: GitPullRequest,
+          shortcut: shortcuts.githubPrs,
+        });
+      }
+
+      if (githubItems.length > 0) {
+        sections.push({
+          label: 'GitHub',
+          items: githubItems,
+        });
+      }
+    }
+
+    // Add Notifications and Project Settings - filtered by permissions
+    const otherItems: NavItem[] = [];
+
+    if (canAccess('notifications')) {
+      otherItems.push({
+        id: 'notifications',
+        label: 'Notifications',
+        icon: Bell,
+        shortcut: shortcuts.notifications,
+        count: unreadNotificationsCount,
+      });
+    }
+
+    if (canAccess('project-settings')) {
+      otherItems.push({
+        id: 'project-settings',
+        label: 'Project Settings',
+        icon: Settings,
+        shortcut: shortcuts.projectSettings,
+      });
+    }
+
+    if (otherItems.length > 0) {
+      sections.push({
+        label: '',
+        items: otherItems,
+      });
+    }
 
     return sections;
   }, [
@@ -236,6 +289,7 @@ export function useNavigation({
     unviewedValidationsCount,
     unreadNotificationsCount,
     isSpecGenerating,
+    canAccess,
   ]);
 
   // Build keyboard shortcuts for navigation

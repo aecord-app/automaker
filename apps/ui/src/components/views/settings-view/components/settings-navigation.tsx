@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import type { NavigationItem, NavigationGroup } from '../config/navigation';
 import { GLOBAL_NAV_GROUPS } from '../config/navigation';
 import type { SettingsViewId } from '../hooks/use-settings-view';
 import { useAppStore } from '@/store/app-store';
+import { useAuthStore } from '@/store/auth-store';
 import type { ModelProvider } from '@automaker/types';
 
 const PROVIDERS_DROPDOWN_KEY = 'settings-providers-dropdown-open';
@@ -192,6 +193,21 @@ export function SettingsNavigation({
   isOpen = true,
   onClose,
 }: SettingsNavigationProps) {
+  // Get user role for filtering admin-only sections
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.role === 'admin';
+
+  // Filter nav groups - hide Team section for non-admins
+  const filteredNavGroups = useMemo(() => {
+    return GLOBAL_NAV_GROUPS.filter((group) => {
+      // Team section is admin-only
+      if (group.label === 'Team') {
+        return isAdmin;
+      }
+      return true;
+    });
+  }, [isAdmin]);
+
   // On mobile, only show when isOpen is true
   // On desktop (lg+), always show regardless of isOpen
   // The desktop visibility is handled by CSS, but we need to render on mobile only when open
@@ -240,7 +256,7 @@ export function SettingsNavigation({
 
         <div className="sticky top-0 p-4 space-y-1">
           {/* Global Settings Groups */}
-          {GLOBAL_NAV_GROUPS.map((group, groupIndex) => (
+          {filteredNavGroups.map((group, groupIndex) => (
             <div key={group.label}>
               {/* Group divider (except for first group) */}
               {groupIndex > 0 && <div className="my-3 border-t border-border/50" />}

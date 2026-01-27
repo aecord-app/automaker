@@ -121,6 +121,8 @@ export const KanbanCard = memo(function KanbanCard({
   const isDraggable =
     !isSelectionMode &&
     (feature.status === 'backlog' ||
+      feature.status === 'pending_approval' ||
+      feature.status === 'approved' ||
       feature.status === 'waiting_approval' ||
       feature.status === 'verified' ||
       feature.status.startsWith('pipeline_') ||

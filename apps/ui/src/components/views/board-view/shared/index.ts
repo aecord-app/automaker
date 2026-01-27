@@ -11,3 +11,4 @@ export * from './planning-mode-select';
 export * from './ancestor-context-section';
 export * from './work-mode-selector';
 export * from './enhancement';
+export * from './task-type-selector';

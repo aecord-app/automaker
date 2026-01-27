@@ -3223,12 +3223,35 @@ Format your response as a structured markdown document.`;
     }
   ): string {
     const title = this.extractTitleFromDescription(feature.description);
+    const taskType = feature.taskType || 'feature';
+    // Support both taskPriority (string) and priority (number: 1=high, 2=medium, 3=low)
+    const priorityMap: Record<number, string> = { 1: 'High', 2: 'Medium', 3: 'Low' };
+    const taskPriority =
+      feature.taskPriority ||
+      (feature.priority ? priorityMap[feature.priority as number] : '') ||
+      '';
+    const category = feature.category || '';
+
+    // Task type-specific guidance for Claude
+    const taskTypeGuidance: Record<string, string> = {
+      feature:
+        'This is a NEW FEATURE. Focus on clean architecture, proper implementation, and comprehensive code. Consider edge cases and follow existing patterns in the codebase.',
+      bug: 'This is a BUG FIX. Focus on identifying the root cause, applying a minimal and targeted fix, and verifying the fix resolves the issue without introducing regressions. Do NOT refactor unrelated code.',
+      enhancement:
+        'This is an ENHANCEMENT to existing functionality. Focus on improving the current implementation while maintaining backward compatibility. Optimize performance, readability, or UX as described.',
+      issue:
+        'This is an ISSUE to investigate and resolve. Start by triaging — understand the problem scope, identify affected areas, then apply the appropriate fix. Document your findings.',
+    };
 
     let prompt = `## Feature Implementation Task
 
 **Feature ID:** ${feature.id}
 **Title:** ${title}
-**Description:** ${feature.description}
+**Task Type:** ${taskType.charAt(0).toUpperCase() + taskType.slice(1)}
+${taskPriority ? `**Priority:** ${taskPriority.charAt(0).toUpperCase() + taskPriority.slice(1)}\n` : ''}${category ? `**Category:** ${category}\n` : ''}**Description:** ${feature.description}
+
+**Task Type Guidance:**
+${taskTypeGuidance[taskType] || taskTypeGuidance.feature}
 `;
 
     if (feature.spec) {

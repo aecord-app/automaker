@@ -58,7 +58,17 @@ export type {
   FeatureTextFilePath,
   FeatureStatus,
   DescriptionHistoryEntry,
+  // AECORD Task Classification types
+  TaskType,
+  TaskPriority,
+  ApprovalStatus,
+  RiskLevel,
+  ExecutionPhase,
+  ExecutionPlan,
+  TaskTypeConfig,
+  TaskPriorityConfig,
 } from './feature.js';
+export { TASK_TYPE_CONFIGS, TASK_PRIORITY_CONFIGS } from './feature.js';
 
 // Session types
 export type {
@@ -273,7 +283,9 @@ export type {
   PipelineConfig,
   PipelineStatus,
   FeatureStatusWithPipeline,
+  KanbanColumnConfig,
 } from './pipeline.js';
+export { AECORD_KANBAN_COLUMNS } from './pipeline.js';
 
 // Port configuration
 export { STATIC_PORT, SERVER_PORT, RESERVED_PORTS } from './ports.js';
@@ -329,3 +341,66 @@ export { PR_STATES, validatePRState } from './worktree.js';
 
 // Terminal types
 export type { TerminalInfo } from './terminal.js';
+
+// User and authentication types (AECORD multi-developer team)
+export type {
+  UserRole,
+  User,
+  JWTPayload,
+  SafeUser,
+  CreateUserInput,
+  UpdateUserInput,
+  UsersStorage,
+  Permission,
+} from './user.js';
+export {
+  ROLE_PERMISSIONS,
+  hasPermission,
+  DEFAULT_USERS_STORAGE,
+  USERS_STORAGE_VERSION,
+} from './user.js';
+
+// Agent profile types (AECORD specialist agents)
+export type { AgentSpecialist, AgentProfile, AgentProfilesStorage } from './agent-profile.js';
+export {
+  AECORD_CONTEXT_INSTRUCTIONS,
+  DEFAULT_AGENT_PROFILES,
+  DEFAULT_AGENT_PROFILES_STORAGE,
+  AGENT_PROFILES_VERSION,
+  getRecommendedProfile,
+  buildSystemPrompt,
+} from './agent-profile.js';
+
+// File lock types (AECORD conflict detection)
+export type {
+  LockType,
+  FileLock,
+  ConflictCheckResult,
+  FileConflict,
+  AcquireLocksRequest,
+  AcquireLocksResult,
+  FileLocksStorage,
+} from './file-lock.js';
+export {
+  DEFAULT_LOCK_DURATION_MINUTES,
+  MAX_LOCK_DURATION_MINUTES,
+  DEFAULT_FILE_LOCKS_STORAGE,
+  FILE_LOCKS_VERSION,
+} from './file-lock.js';
+
+// Role permissions (AECORD feature visibility)
+export type {
+  FeatureId,
+  FeatureInfo,
+  RolePermissions,
+  RolePermissionsConfig,
+  RolePermissionsStorage,
+} from './role-permissions.js';
+export {
+  FEATURES,
+  DEFAULT_ROLE_PERMISSIONS,
+  DEFAULT_ROLE_PERMISSIONS_STORAGE,
+  ROLE_PERMISSIONS_VERSION,
+  hasFeatureAccess,
+  getAccessibleFeatures,
+} from './role-permissions.js';

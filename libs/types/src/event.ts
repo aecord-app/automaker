@@ -47,6 +47,13 @@ export type EventType =
   | 'dev-server:started'
   | 'dev-server:output'
   | 'dev-server:stopped'
-  | 'notification:created';
+  | 'notification:created'
+  // AECORD task approval workflow events
+  | 'feature:submitted_for_approval'
+  | 'feature:approved'
+  | 'feature:rejected'
+  | 'feature:assigned'
+  | 'feature:unassigned'
+  | 'feature:classification_updated';
 
 export type EventCallback = (type: EventType, payload: unknown) => void;

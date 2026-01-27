@@ -12,6 +12,7 @@ import { PlanSettingsPopover } from './dialogs/plan-settings-popover';
 import { getHttpApiClient } from '@/lib/http-api-client';
 import { BoardSearchBar } from './board-search-bar';
 import { BoardControls } from './board-controls';
+import { useAuthStore } from '@/store/auth-store';
 import { ViewToggle, type ViewMode } from './components';
 import { HeaderMobileMenu } from './header-mobile-menu';
 
@@ -112,6 +113,8 @@ export function BoardHeader({
   const [showActionsPanel, setShowActionsPanel] = useState(false);
 
   const isTablet = useIsTablet();
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.role === 'admin';
 
   return (
     <div className="flex items-center justify-between gap-5 p-4 border-b border-border bg-glass backdrop-blur-md">
@@ -128,7 +131,9 @@ export function BoardHeader({
       </div>
       <div className="flex gap-4 items-center">
         {/* Usage Popover - show if either provider is authenticated, only on desktop */}
-        {isMounted && !isTablet && (showClaudeUsage || showCodexUsage) && <UsagePopover />}
+        {isMounted && !isTablet && isAdmin && (showClaudeUsage || showCodexUsage) && (
+          <UsagePopover />
+        )}
 
         {/* Tablet/Mobile view: show hamburger menu with all controls */}
         {isMounted && isTablet && (
@@ -150,9 +155,9 @@ export function BoardHeader({
           />
         )}
 
-        {/* Desktop view: show full controls */}
+        {/* Desktop view: show full controls (admin only) */}
         {/* Worktrees Toggle - only show after mount to prevent hydration issues */}
-        {isMounted && !isTablet && (
+        {isMounted && !isTablet && isAdmin && (
           <div className={controlContainerClass} data-testid="worktrees-toggle-container">
             <GitBranch className="w-4 h-4 text-muted-foreground" />
             <Label
@@ -174,8 +179,8 @@ export function BoardHeader({
           </div>
         )}
 
-        {/* Auto Mode Toggle - only show after mount to prevent hydration issues */}
-        {isMounted && !isTablet && (
+        {/* Auto Mode Toggle - only show after mount, admin only */}
+        {isMounted && !isTablet && isAdmin && (
           <div className={controlContainerClass} data-testid="auto-mode-toggle-container">
             <Label
               htmlFor="auto-mode-toggle"
@@ -206,8 +211,8 @@ export function BoardHeader({
           </div>
         )}
 
-        {/* Plan Button with Settings - only show on desktop, tablet/mobile has it in the panel */}
-        {isMounted && !isTablet && (
+        {/* Plan Button with Settings - only show on desktop, admin only */}
+        {isMounted && !isTablet && isAdmin && (
           <div className={controlContainerClass} data-testid="plan-button-container">
             {hasPendingPlan && (
               <button

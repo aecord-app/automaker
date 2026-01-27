@@ -9,7 +9,7 @@ export type ColumnId = Feature['status'];
 export interface EmptyStateConfig {
   title: string;
   description: string;
-  icon: 'lightbulb' | 'play' | 'clock' | 'check' | 'sparkles';
+  icon: 'lightbulb' | 'play' | 'clock' | 'check' | 'sparkles' | 'shield' | 'eye';
   shortcutKey?: string; // Keyboard shortcut label (e.g., 'N', 'A')
   shortcutHint?: string; // Human-readable shortcut hint
   primaryAction?: {
@@ -33,19 +33,38 @@ export const EMPTY_STATE_CONFIGS: Record<string, EmptyStateConfig> = {
       actionType: 'none',
     },
   },
+  // AECORD: New approval workflow columns
+  pending_approval: {
+    title: 'No Pending Approvals',
+    description:
+      'Tasks submitted for admin review will appear here. Only admins can approve tasks.',
+    icon: 'clock',
+  },
+  approved: {
+    title: 'No Approved Tasks',
+    description: 'Admin-approved tasks ready for implementation will appear here.',
+    icon: 'shield',
+  },
   in_progress: {
     title: 'Nothing in Progress',
     description: 'Drag a feature from the backlog here or click implement to start working on it.',
     icon: 'play',
   },
+  // Legacy name kept for backwards compatibility
   waiting_approval: {
-    title: 'No Items Awaiting Approval',
-    description: 'Features will appear here after implementation is complete and need your review.',
+    title: 'No Items Awaiting Review',
+    description: 'Features will appear here after implementation is complete and need review.',
     icon: 'clock',
+  },
+  // AECORD: Renamed from waiting_approval conceptually
+  waiting_review: {
+    title: 'Awaiting Review',
+    description: 'Implementation complete. Waiting for final review before verification.',
+    icon: 'eye',
   },
   verified: {
     title: 'No Verified Features',
-    description: 'Approved features will appear here. They can then be completed and archived.',
+    description: 'Reviewed and verified features will appear here. They can then be completed.',
     icon: 'check',
   },
   // Pipeline step default configuration
@@ -72,9 +91,67 @@ export interface Column {
   colorClass: string;
   isPipelineStep?: boolean;
   pipelineStepId?: string;
+  requiresAdminAction?: boolean; // AECORD: Only admin can move items to/from this column
+  icon?: string; // AECORD: Icon name for the column header
 }
 
-// Base columns (start)
+// ============================================================================
+// AECORD Approval Workflow Columns
+// ============================================================================
+
+// AECORD: Columns before pipeline steps (approval workflow)
+const AECORD_BASE_COLUMNS: Column[] = [
+  {
+    id: 'backlog',
+    title: 'Backlog',
+    colorClass: 'bg-[var(--status-backlog)]',
+    icon: 'Inbox',
+  },
+  {
+    id: 'pending_approval',
+    title: 'Pending Approval',
+    colorClass: 'bg-amber-500',
+    icon: 'Clock',
+  },
+  {
+    id: 'approved',
+    title: 'Approved',
+    colorClass: 'bg-emerald-500',
+    icon: 'CheckCircle',
+    requiresAdminAction: true,
+  },
+  {
+    id: 'in_progress',
+    title: 'In Progress',
+    colorClass: 'bg-[var(--status-in-progress)]',
+    icon: 'Play',
+  },
+];
+
+// AECORD: Columns after pipeline steps
+const AECORD_END_COLUMNS: Column[] = [
+  {
+    id: 'waiting_review',
+    title: 'Waiting Review',
+    colorClass: 'bg-purple-500',
+    icon: 'Eye',
+  },
+  {
+    id: 'verified',
+    title: 'Verified',
+    colorClass: 'bg-[var(--status-success)]',
+    icon: 'CheckCheck',
+  },
+];
+
+// AECORD: Full workflow columns (without pipeline)
+export const AECORD_COLUMNS: Column[] = [...AECORD_BASE_COLUMNS, ...AECORD_END_COLUMNS];
+
+// ============================================================================
+// Standard Columns (Legacy/Backwards Compatibility)
+// ============================================================================
+
+// Base columns (start) - standard workflow
 const BASE_COLUMNS: Column[] = [
   { id: 'backlog', title: 'Backlog', colorClass: 'bg-[var(--status-backlog)]' },
   {
@@ -84,7 +161,7 @@ const BASE_COLUMNS: Column[] = [
   },
 ];
 
-// End columns (after pipeline)
+// End columns (after pipeline) - standard workflow
 const END_COLUMNS: Column[] = [
   {
     id: 'waiting_approval',
@@ -102,7 +179,7 @@ const END_COLUMNS: Column[] = [
 export const COLUMNS: Column[] = [...BASE_COLUMNS, ...END_COLUMNS];
 
 /**
- * Generate columns including pipeline steps
+ * Generate columns including pipeline steps (standard workflow)
  */
 export function getColumnsWithPipeline(pipelineConfig: PipelineConfig | null): Column[] {
   const pipelineSteps = pipelineConfig?.steps || [];
@@ -126,6 +203,75 @@ export function getColumnsWithPipeline(pipelineConfig: PipelineConfig | null): C
     }));
 
   return [...BASE_COLUMNS, ...pipelineColumns, ...END_COLUMNS];
+}
+
+/**
+ * Generate AECORD workflow columns with optional pipeline steps
+ * AECORD workflow: backlog → pending_approval → approved → in_progress → [pipeline] → waiting_review → verified
+ */
+export function getAecordColumnsWithPipeline(pipelineConfig: PipelineConfig | null): Column[] {
+  const pipelineSteps = pipelineConfig?.steps || [];
+
+  if (pipelineSteps.length === 0) {
+    return AECORD_COLUMNS;
+  }
+
+  // Sort steps by order
+  const sortedSteps = [...pipelineSteps].sort((a, b) => a.order - b.order);
+
+  // Convert pipeline steps to columns (filter out invalid steps)
+  const pipelineColumns: Column[] = sortedSteps
+    .filter((step) => step && step.id)
+    .map((step) => ({
+      id: `pipeline_${step.id}` as FeatureStatusWithPipeline,
+      title: step.name || 'Pipeline Step',
+      colorClass: step.colorClass || 'bg-[var(--status-in-progress)]',
+      isPipelineStep: true,
+      pipelineStepId: step.id,
+    }));
+
+  return [...AECORD_BASE_COLUMNS, ...pipelineColumns, ...AECORD_END_COLUMNS];
+}
+
+/**
+ * Check if a column transition requires admin permission
+ */
+export function requiresAdminForTransition(fromStatus: string, toStatus: string): boolean {
+  // Only admin can move items to 'approved' column
+  if (toStatus === 'approved') {
+    return true;
+  }
+  // Only admin can reject (move back from pending_approval to backlog with rejection)
+  if (fromStatus === 'pending_approval' && toStatus === 'backlog') {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Get allowed transitions for a status based on AECORD workflow
+ */
+export function getAllowedTransitions(
+  status: FeatureStatusWithPipeline
+): FeatureStatusWithPipeline[] {
+  const transitions: Record<string, FeatureStatusWithPipeline[]> = {
+    backlog: ['pending_approval'],
+    pending_approval: ['approved', 'backlog'], // backlog = rejected
+    approved: ['in_progress', 'pending_approval'],
+    in_progress: ['waiting_review', 'approved'],
+    waiting_review: ['verified', 'in_progress'],
+    verified: ['completed', 'waiting_review'],
+    completed: ['verified'],
+    // Legacy support
+    waiting_approval: ['verified', 'in_progress'],
+  };
+
+  // Pipeline steps can move to next step or back
+  if (isPipelineStatus(status)) {
+    return ['in_progress', 'waiting_review'] as FeatureStatusWithPipeline[];
+  }
+
+  return transitions[status] || [];
 }
 
 /**

@@ -35,8 +35,9 @@ import {
   PlanningMode,
   Feature,
 } from '@/store/app-store';
-import type { ReasoningEffort, PhaseModelEntry, AgentModel } from '@automaker/types';
-import { supportsReasoningEffort, isClaudeModel } from '@automaker/types';
+import { useAuthStore } from '@/store/auth-store';
+import type { ReasoningEffort, PhaseModelEntry, AgentModel, TaskType } from '@automaker/types';
+import { supportsReasoningEffort, isClaudeModel, TASK_TYPE_CONFIGS } from '@automaker/types';
 import {
   TestingTabContent,
   PrioritySelector,
@@ -45,6 +46,7 @@ import {
   AncestorContextSection,
   EnhanceWithAI,
   EnhancementHistoryButton,
+  TaskTypeSelector,
   type BaseHistoryEntry,
 } from '../shared';
 import type { WorkMode } from '../shared';
@@ -88,6 +90,7 @@ type FeatureData = {
   title: string;
   category: string;
   description: string;
+  taskType: TaskType;
   images: FeatureImage[];
   imagePaths: DescriptionImagePath[];
   textFilePaths: DescriptionTextFilePath[];
@@ -156,9 +159,12 @@ export function AddFeatureDialog({
 }: AddFeatureDialogProps) {
   const isSpawnMode = !!parentFeature;
   const navigate = useNavigate();
+  const authUser = useAuthStore((state) => state.user);
+  const isAdmin = authUser?.role === 'admin';
   const [workMode, setWorkMode] = useState<WorkMode>('current');
 
   // Form state
+  const [taskType, setTaskType] = useState<TaskType>('feature');
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
@@ -207,6 +213,7 @@ export function AddFeatureDialog({
     wasOpenRef.current = open;
 
     if (justOpened) {
+      setTaskType('feature');
       setSkipTests(defaultSkipTests);
       // When a non-main worktree is selected, use its branch name for custom mode
       // Otherwise, use the default branch
@@ -215,7 +222,7 @@ export function AddFeatureDialog({
         getDefaultWorkMode(useWorktrees, selectedNonMainWorktreeBranch, forceCurrentBranchMode)
       );
       setPlanningMode(defaultPlanningMode);
-      setRequirePlanApproval(defaultRequirePlanApproval);
+      setRequirePlanApproval(isAdmin ? defaultRequirePlanApproval : true);
       setModelEntry(defaultFeatureModel);
 
       // Initialize description history (empty for new feature)
@@ -315,6 +322,7 @@ export function AddFeatureDialog({
       title,
       category: finalCategory,
       description: finalDescription,
+      taskType,
       images,
       imagePaths,
       textFilePaths,
@@ -333,6 +341,7 @@ export function AddFeatureDialog({
   };
 
   const resetForm = () => {
+    setTaskType('feature');
     setTitle('');
     setCategory('');
     setDescription('');
@@ -348,7 +357,7 @@ export function AddFeatureDialog({
       getDefaultWorkMode(useWorktrees, selectedNonMainWorktreeBranch, forceCurrentBranchMode)
     );
     setPlanningMode(defaultPlanningMode);
-    setRequirePlanApproval(defaultRequirePlanApproval);
+    setRequirePlanApproval(isAdmin ? defaultRequirePlanApproval : true);
     setPreviewMap(new Map());
     setDescriptionError(false);
     setDescriptionHistory([]);
@@ -505,37 +514,42 @@ export function AddFeatureDialog({
                 <Cpu className="w-4 h-4 text-muted-foreground" />
                 <span>AI & Execution</span>
               </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onOpenChange(false);
-                        navigate({ to: '/settings', search: { view: 'defaults' } });
-                      }}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <Settings2 className="w-3.5 h-3.5" />
-                      <span>Edit Defaults</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Change default model and planning settings for new features</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              {isAdmin && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onOpenChange(false);
+                          navigate({ to: '/settings', search: { view: 'defaults' } });
+                        }}
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Settings2 className="w-3.5 h-3.5" />
+                        <span>Edit Defaults</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Change default model and planning settings for new features</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Model</Label>
-              <PhaseModelSelector
-                value={modelEntry}
-                onChange={handleModelChange}
-                compact
-                align="end"
-              />
-            </div>
+            {/* Model selector - admin only */}
+            {isAdmin && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Model</Label>
+                <PhaseModelSelector
+                  value={modelEntry}
+                  onChange={handleModelChange}
+                  compact
+                  align="end"
+                />
+              </div>
+            )}
 
             <div className="grid gap-3 grid-cols-2">
               <div className="space-y-1.5">
@@ -598,6 +612,7 @@ export function AddFeatureDialog({
                       checked={requirePlanApproval}
                       onCheckedChange={(checked) => setRequirePlanApproval(!!checked)}
                       disabled={
+                        !isAdmin || // Non-admins cannot uncheck require approval
                         !modelSupportsPlanningMode ||
                         planningMode === 'skip' ||
                         planningMode === 'lite'
@@ -608,7 +623,8 @@ export function AddFeatureDialog({
                       htmlFor="add-feature-require-approval"
                       className={cn(
                         'text-xs font-normal',
-                        !modelSupportsPlanningMode ||
+                        !isAdmin ||
+                          !modelSupportsPlanningMode ||
                           planningMode === 'skip' ||
                           planningMode === 'lite'
                           ? 'cursor-not-allowed text-muted-foreground'
@@ -628,6 +644,15 @@ export function AddFeatureDialog({
             <div className={sectionHeaderClass}>
               <FolderKanban className="w-4 h-4 text-muted-foreground" />
               <span>Organization</span>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Type</Label>
+              <TaskTypeSelector
+                selectedType={taskType}
+                onTypeSelect={setTaskType}
+                testIdPrefix="feature-task-type"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -651,22 +676,24 @@ export function AddFeatureDialog({
               </div>
             </div>
 
-            {/* Work Mode Selector */}
-            <div className="pt-2">
-              <WorkModeSelector
-                workMode={workMode}
-                onWorkModeChange={setWorkMode}
-                branchName={branchName}
-                onBranchNameChange={setBranchName}
-                branchSuggestions={branchSuggestions}
-                branchCardCounts={branchCardCounts}
-                currentBranch={currentBranch}
-                testIdPrefix="feature-work-mode"
-              />
-            </div>
+            {/* Work Mode Selector - admin only */}
+            {isAdmin && (
+              <div className="pt-2">
+                <WorkModeSelector
+                  workMode={workMode}
+                  onWorkModeChange={setWorkMode}
+                  branchName={branchName}
+                  onBranchNameChange={setBranchName}
+                  branchSuggestions={branchSuggestions}
+                  branchCardCounts={branchCardCounts}
+                  currentBranch={currentBranch}
+                  testIdPrefix="feature-work-mode"
+                />
+              </div>
+            )}
 
-            {/* Dependencies - only show when not in spawn mode */}
-            {!isSpawnMode && allFeatures.length > 0 && (
+            {/* Dependencies - only show when not in spawn mode, admin only */}
+            {isAdmin && !isSpawnMode && allFeatures.length > 0 && (
               <div className="pt-2 space-y-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">
@@ -703,7 +730,7 @@ export function AddFeatureDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          {onAddAndStart && (
+          {isAdmin && onAddAndStart && (
             <Button
               onClick={handleAddAndStart}
               variant="secondary"

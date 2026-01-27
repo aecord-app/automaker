@@ -84,6 +84,37 @@ import { getNotificationService } from './services/notification-service.js';
 import { createEventHistoryRoutes } from './routes/event-history/index.js';
 import { getEventHistoryService } from './services/event-history-service.js';
 
+// AECORD multi-developer team auth
+import { UserService } from './services/user-service.js';
+import { createJWTService } from './services/jwt-service.js';
+import { createUserAuthRoutes } from './routes/user-auth/index.js';
+import { createUsersRoutes } from './routes/users/index.js';
+import { createJWTAuthMiddleware } from './middleware/jwt-auth.js';
+
+// AECORD task approval workflow
+import { ApprovalService } from './services/approval-service.js';
+import { createApprovalsRoutes } from './routes/approvals/index.js';
+
+// AECORD agent profiles
+import { AgentProfileService } from './services/agent-profile-service.js';
+import { createAgentProfileRoutes } from './routes/agent-profiles/index.js';
+
+// AECORD execution plans
+import { PlanService } from './services/plan-service.js';
+import { createPlansRoutes } from './routes/plans/index.js';
+
+// AECORD conflict detection
+import { ConflictService } from './services/conflict-service.js';
+import { createConflictsRoutes } from './routes/conflicts/index.js';
+
+// AECORD role permissions
+import { createRolePermissionsRoutes } from './routes/role-permissions/index.js';
+
+// AECORD team projects
+import { getTeamProjectsService } from './services/team-projects-service.js';
+import { createTeamProjectsRoutes } from './routes/team-projects/index.js';
+import { createServerAccessMiddleware } from './middleware/server-access.js';
+
 // Load environment variables
 dotenv.config();
 
@@ -237,6 +268,22 @@ const codexUsageService = new CodexUsageService(codexAppServerService);
 const mcpTestService = new MCPTestService(settingsService);
 const ideationService = new IdeationService(events, settingsService, featureLoader);
 
+// AECORD multi-developer team auth services
+const userService = new UserService(DATA_DIR);
+const jwtService = createJWTService();
+
+// AECORD task approval workflow service
+const approvalService = new ApprovalService(featureLoader, userService, events);
+
+// AECORD agent profile service
+const agentProfileService = new AgentProfileService(DATA_DIR);
+
+// AECORD execution plan service
+const planService = new PlanService(DATA_DIR, featureLoader, agentProfileService);
+
+// AECORD conflict detection service
+const conflictService = new ConflictService(DATA_DIR, featureLoader, userService);
+
 // Initialize DevServerService with event emitter for real-time log streaming
 const devServerService = getDevServerService();
 devServerService.setEventEmitter(events);
@@ -288,6 +335,22 @@ eventHookService.initialize(events, settingsService, eventHistoryService, featur
   await agentService.initialize();
   logger.info('Agent service initialized');
 
+  // Initialize user service (creates default admin if needed)
+  await userService.initialize();
+  logger.info('User service initialized');
+
+  // Initialize agent profile service (loads or creates default profiles)
+  await agentProfileService.initialize();
+  logger.info('Agent profile service initialized');
+
+  // Initialize execution plan service
+  await planService.initialize();
+  logger.info('Plan service initialized');
+
+  // Initialize conflict detection service
+  await conflictService.initialize();
+  logger.info('Conflict service initialized');
+
   // Bootstrap Codex model cache in background (don't block server startup)
   void codexModelCacheService.getModels().catch((err) => {
     logger.error('Failed to bootstrap Codex model cache:', err);
@@ -312,11 +375,51 @@ app.use('/api/health', createHealthRoutes());
 app.use('/api/auth', createAuthRoutes());
 app.use('/api/setup', createSetupRoutes());
 
+// AECORD user authentication routes (unauthenticated - handles its own auth)
+app.use('/api/user-auth', createUserAuthRoutes(userService, jwtService));
+
 // Apply authentication to all other routes
 app.use('/api', authMiddleware);
 
+// Apply JWT auth middleware to add user info to requests (optional, non-blocking)
+app.use('/api', createJWTAuthMiddleware(jwtService));
+
+// Apply server access middleware to check if non-admin users are allowed
+// This must be after JWT auth so we have user info, but skips certain paths
+app.use('/api', (req, res, next) => {
+  // Skip server access check for auth routes (login needs to work when access is disabled)
+  // and for team-projects routes (so admins can re-enable access)
+  const skipPaths = ['/api/user-auth', '/api/health', '/api/team-projects'];
+  if (skipPaths.some((path) => req.path.startsWith(path.replace('/api', '')))) {
+    return next();
+  }
+  return createServerAccessMiddleware(DATA_DIR)(req, res, next);
+});
+
 // Protected health endpoint with detailed info
 app.get('/api/health/detailed', createDetailedHandler());
+
+// AECORD users management routes (admin only)
+app.use('/api/users', createUsersRoutes(userService, jwtService));
+
+// AECORD task approval workflow routes
+app.use('/api/approvals', createApprovalsRoutes(approvalService, userService, jwtService));
+
+// AECORD agent profile routes
+app.use('/api/agent-profiles', createAgentProfileRoutes(agentProfileService, jwtService));
+
+// AECORD execution plan routes
+app.use('/api/plans', createPlansRoutes(planService, jwtService));
+
+// AECORD conflict detection routes
+app.use('/api/conflicts', createConflictsRoutes(conflictService, jwtService));
+
+// AECORD role permissions routes
+app.use('/api/role-permissions', createRolePermissionsRoutes(DATA_DIR, jwtService));
+
+// AECORD team projects routes
+const teamProjectsService = getTeamProjectsService(DATA_DIR);
+app.use('/api/team-projects', createTeamProjectsRoutes(DATA_DIR, jwtService));
 
 app.use('/api/fs', createFsRoutes(events));
 app.use('/api/agent', createAgentRoutes(agentService, events));

@@ -1,176 +1,192 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# CLAUDE.md - AECORD Team AutoMaker Customization
 
 ## Project Overview
 
-Automaker is an autonomous AI development studio built as an npm workspace monorepo. It provides a Kanban-based workflow where AI agents (powered by Claude Agent SDK) implement features in isolated git worktrees.
+Customize AutoMaker for AECORD's multi-developer team. AECORD is a B2B construction marketplace migrating from WordPress to microservices (Node.js, React, PostgreSQL, Prisma).
 
-## Common Commands
+**Goal:** Enable 6+ developers to work in parallel with AI-assisted coding without code conflicts or wasted AI executions.
 
-```bash
-# Development
-npm run dev                 # Interactive launcher (choose web or electron)
-npm run dev:web             # Web browser mode (localhost:3007)
-npm run dev:electron        # Desktop app mode
-npm run dev:electron:debug  # Desktop with DevTools open
+---
 
-# Building
-npm run build               # Build web application
-npm run build:packages      # Build all shared packages (required before other builds)
-npm run build:electron      # Build desktop app for current platform
-npm run build:server        # Build server only
+## Core Features to Implement
 
-# Testing
-npm run test                # E2E tests (Playwright, headless)
-npm run test:headed         # E2E tests with browser visible
-npm run test:server         # Server unit tests (Vitest)
-npm run test:packages       # All shared package tests
-npm run test:all            # All tests (packages + server)
-
-# Single test file
-npm run test:server -- tests/unit/specific.test.ts
-
-# Linting and formatting
-npm run lint                # ESLint
-npm run format              # Prettier write
-npm run format:check        # Prettier check
-```
-
-## Architecture
-
-### Monorepo Structure
+### 1. JWT Authentication with Role-Based Access
 
 ```
-automaker/
-├── apps/
-│   ├── ui/           # React + Vite + Electron frontend (port 3007)
-│   └── server/       # Express + WebSocket backend (port 3008)
-└── libs/             # Shared packages (@automaker/*)
-    ├── types/        # Core TypeScript definitions (no dependencies)
-    ├── utils/        # Logging, errors, image processing, context loading
-    ├── prompts/      # AI prompt templates
-    ├── platform/     # Path management, security, process spawning
-    ├── model-resolver/    # Claude model alias resolution
-    ├── dependency-resolver/  # Feature dependency ordering
-    └── git-utils/    # Git operations & worktree management
+Roles: admin | backend-dev | frontend-dev | devops
+- Admin sees all tasks, can approve/reject
+- Developers see only their assigned tasks + service area
+- Shared Claude API auth (one Anthropic account)
 ```
 
-### Package Dependency Chain
+Create: `auth.ts`, `user-service.ts`, `auth-routes.ts`, `auth-store.ts`, `data/users.json`
 
-Packages can only depend on packages above them:
-
-```
-@automaker/types (no dependencies)
-    ↓
-@automaker/utils, @automaker/prompts, @automaker/platform, @automaker/model-resolver, @automaker/dependency-resolver
-    ↓
-@automaker/git-utils
-    ↓
-@automaker/server, @automaker/ui
-```
-
-### Key Technologies
-
-- **Frontend**: React 19, Vite 7, Electron 39, TanStack Router, Zustand 5, Tailwind CSS 4
-- **Backend**: Express 5, WebSocket (ws), Claude Agent SDK, node-pty
-- **Testing**: Playwright (E2E), Vitest (unit)
-
-### Server Architecture
-
-The server (`apps/server/src/`) follows a modular pattern:
-
-- `routes/` - Express route handlers organized by feature (agent, features, auto-mode, worktree, etc.)
-- `services/` - Business logic (AgentService, AutoModeService, FeatureLoader, TerminalService)
-- `providers/` - AI provider abstraction (currently Claude via Claude Agent SDK)
-- `lib/` - Utilities (events, auth, worktree metadata)
-
-### Frontend Architecture
-
-The UI (`apps/ui/src/`) uses:
-
-- `routes/` - TanStack Router file-based routing
-- `components/views/` - Main view components (board, settings, terminal, etc.)
-- `store/` - Zustand stores with persistence (app-store.ts, setup-store.ts)
-- `hooks/` - Custom React hooks
-- `lib/` - Utilities and API client
-
-## Data Storage
-
-### Per-Project Data (`.automaker/`)
-
-```
-.automaker/
-├── features/              # Feature JSON files and images
-│   └── {featureId}/
-│       ├── feature.json
-│       ├── agent-output.md
-│       └── images/
-├── context/               # Context files for AI agents (CLAUDE.md, etc.)
-├── settings.json          # Project-specific settings
-├── spec.md               # Project specification
-└── analysis.json         # Project structure analysis
-```
-
-### Global Data (`DATA_DIR`, default `./data`)
-
-```
-data/
-├── settings.json          # Global settings, profiles, shortcuts
-├── credentials.json       # API keys
-├── sessions-metadata.json # Chat session metadata
-└── agent-sessions/        # Conversation histories
-```
-
-## Import Conventions
-
-Always import from shared packages, never from old paths:
+### 2. Task Classification
 
 ```typescript
-// ✅ Correct
-import type { Feature, ExecuteOptions } from '@automaker/types';
-import { createLogger, classifyError } from '@automaker/utils';
-import { getEnhancementPrompt } from '@automaker/prompts';
-import { getFeatureDir, ensureAutomakerDir } from '@automaker/platform';
-import { resolveModelString } from '@automaker/model-resolver';
-import { resolveDependencies } from '@automaker/dependency-resolver';
-import { getGitRepositoryDiffs } from '@automaker/git-utils';
-
-// ❌ Never import from old paths
-import { Feature } from '../services/feature-loader'; // Wrong
-import { createLogger } from '../lib/logger'; // Wrong
+type: 'feature' | 'bug' | 'enhancement' | 'issue';
+priority: 'critical' | 'high' | 'medium' | 'low';
+approvalStatus: 'pending' | 'approved' | 'rejected';
 ```
 
-## Key Patterns
+Each type → different agent + planning mode:
 
-### Event-Driven Architecture
+- `feature` → Backend/Frontend Specialist, spec planning, manual review
+- `bug` → Debug Specialist (haiku-4.5), lite planning, auto-verify if tests pass
+- `enhancement` → Optimization Specialist, lite planning, manual review
+- `issue` → Triage Specialist, skip planning, auto-verify if low-risk
 
-All server operations emit events that stream to the frontend via WebSocket. Events are created using `createEventEmitter()` from `lib/events.ts`.
+### 3. Kanban with Approval Gate
 
-### Git Worktree Isolation
+Columns: `Backlog → Pending Approval → Approved → In Progress → Waiting Review → Verified → Done`
 
-Each feature executes in an isolated git worktree, created via `@automaker/git-utils`. This protects the main branch during AI agent execution.
+Rules:
 
-### Context Files
+- Only admin moves: Pending Approval → Approved
+- Approved tasks auto-start when assigned user triggers
+- Generate execution plan before start (admin reviews)
 
-Project-specific rules are stored in `.automaker/context/` and automatically loaded into agent prompts via `loadContextFiles()` from `@automaker/utils`.
+### 4. Agent Profiles (add to settings.json)
 
-### Model Resolution
+```json
+{
+  "Backend Specialist": { "model": "sonnet-4.5", "planningMode": "spec" },
+  "Frontend Specialist": { "model": "sonnet-4.5", "planningMode": "spec" },
+  "Debug Specialist": { "model": "haiku-4.5", "planningMode": "lite" },
+  "DevOps Specialist": { "model": "sonnet-4.5", "planningMode": "spec" }
+}
+```
 
-Use `resolveModelString()` from `@automaker/model-resolver` to convert model aliases:
+System prompts should reference AECORD conventions: `aecord_` table prefix, UUID keys, Prisma, shadcn/ui.
 
-- `haiku` → `claude-haiku-4-5`
-- `sonnet` → `claude-sonnet-4-20250514`
-- `opus` → `claude-opus-4-5-20251101`
+### 5. Git Workflow
 
-## Environment Variables
+```
+Branch: {type}/{service}/{task-id}-{slug}
+Base: develop (not main)
+Isolation: git worktree per task
+```
 
-- `ANTHROPIC_API_KEY` - Anthropic API key (or use Claude Code CLI auth)
-- `HOST` - Host to bind server to (default: 0.0.0.0)
-- `HOSTNAME` - Hostname for user-facing URLs (default: localhost)
-- `PORT` - Server port (default: 3008)
-- `DATA_DIR` - Data storage directory (default: ./data)
-- `ALLOWED_ROOT_DIRECTORY` - Restrict file operations to specific directory
-- `AUTOMAKER_MOCK_AGENT=true` - Enable mock agent mode for CI testing
-- `AUTOMAKER_AUTO_LOGIN=true` - Skip login prompt in development (disabled when NODE_ENV=production)
-- `VITE_HOSTNAME` - Hostname for frontend API URLs (default: localhost)
+Pre-execution: sync develop, create worktree, baseline tests
+Post-execution: lint, test, diff against develop
+
+File locking: Track which files each task modifies. Queue conflicting tasks.
+
+### 6. Execution Plan
+
+Before any AI execution, generate:
+
+- Phases with estimated tokens/files
+- Risk assessment (high/medium/low)
+- Acceptance criteria
+- Estimated cost
+
+Admin approves plan before execution starts.
+
+---
+
+## API Endpoints
+
+```
+POST /api/auth/login
+GET  /api/users/me
+GET  /api/approvals/pending (admin)
+POST /api/approvals/:id/approve (admin)
+POST /api/tasks/:id/plan
+GET  /api/conflicts/check
+```
+
+---
+
+## File Structure
+
+```
+apps/server/
+├── middleware/auth.ts
+├── services/
+│   ├── user-service.ts
+│   ├── approval-service.ts
+│   ├── conflict-service.ts
+│   └── plan-service.ts
+└── routes/
+    ├── auth-routes.ts
+    └── approval-routes.ts
+
+apps/ui/
+├── components/
+│   ├── ApprovalQueue.tsx
+│   └── PlanReview.tsx
+└── stores/auth-store.ts
+
+data/
+├── users.json
+├── file-locks.json
+└── execution-plans.json
+```
+
+---
+
+## How to Run
+
+### Server only
+
+```bash
+cd apps/server && npm run dev    # Starts on port 3008
+```
+
+### Electron (desktop app) — RECOMMENDED
+
+```bash
+# Starts Vite dev server + Electron together (hot reload works)
+cd apps/ui && npm run dev:electron
+```
+
+> **DO NOT** run `npx electron .` directly — it loads static build and shows a black screen.
+
+### Full stack (interactive launcher)
+
+```bash
+# From repo root — presents interactive menu (Web / Electron / Docker)
+npm run dev
+```
+
+### Data directories — CRITICAL
+
+There are TWO separate data directories. They are NOT the same:
+
+- **Electron app** reads from: `aecord-automaker/data/` (root)
+- **Standalone server** (`npm run dev` in `apps/server/`) reads from: `apps/server/data/`
+- **Both must be kept in sync** when editing files manually (users.json, team-projects.json, etc.)
+
+Key data files:
+
+- `users.json` — user accounts and password hashes
+- `team-projects.json` — team project configuration
+- `role-permissions.json` — role-based feature permissions
+- `.api-key` — API key for web mode auth (regenerated each server start)
+
+### Current credentials
+
+- admin: `Z@qzse321!@#`
+- sujith: `Admin123#`
+
+---
+
+## Constraints
+
+- Do NOT modify `libs/` core agent logic
+- Follow AutoMaker patterns (services, routes, Zustand stores)
+- All changes must pass existing tests
+- Keep UI responsive (<100ms interactions)
+
+---
+
+## Implementation Priority
+
+1. Auth + roles
+2. Task classification schema
+3. Kanban approval column
+4. Agent profiles
+5. Plan generation
+6. Git worktree isolation
+7. Conflict detection

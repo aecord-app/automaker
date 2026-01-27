@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/description-image-dropzone';
 import { GitBranch, Cpu, FolderKanban, Settings2 } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
+import { useAuthStore } from '@/store/auth-store';
 import { toast } from 'sonner';
 import { cn, modelSupportsThinking } from '@/lib/utils';
 import { Feature, ModelAlias, ThinkingLevel, useAppStore, PlanningMode } from '@/store/app-store';
@@ -36,8 +37,10 @@ import {
   PlanningModeSelect,
   EnhanceWithAI,
   EnhancementHistoryButton,
+  TaskTypeSelector,
   type EnhancementMode,
 } from '../shared';
+import type { TaskType } from '@automaker/types';
 import type { WorkMode } from '../shared';
 import { PhaseModelSelector } from '@/components/views/settings-view/model-defaults/phase-model-selector';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -92,6 +95,8 @@ export function EditFeatureDialog({
   allFeatures,
 }: EditFeatureDialogProps) {
   const navigate = useNavigate();
+  const authUser = useAuthStore((state) => state.user);
+  const isAdmin = authUser?.role === 'admin';
   const [editingFeature, setEditingFeature] = useState<Feature | null>(feature);
   // Derive initial workMode from feature's branchName
   const [workMode, setWorkMode] = useState<WorkMode>(() => {
@@ -103,6 +108,7 @@ export function EditFeatureDialog({
     () => new Map()
   );
   const [showDependencyTree, setShowDependencyTree] = useState(false);
+  const [taskType, setTaskType] = useState<TaskType>(feature?.taskType ?? 'feature');
   const [planningMode, setPlanningMode] = useState<PlanningMode>(feature?.planningMode ?? 'skip');
   const [requirePlanApproval, setRequirePlanApproval] = useState(
     feature?.requirePlanApproval ?? false
@@ -150,7 +156,8 @@ export function EditFeatureDialog({
     setEditingFeature(feature);
     if (feature) {
       setPlanningMode(feature.planningMode ?? 'skip');
-      setRequirePlanApproval(feature.requirePlanApproval ?? false);
+      setTaskType(feature?.taskType ?? 'feature');
+      setRequirePlanApproval(isAdmin ? (feature.requirePlanApproval ?? false) : true);
       // Derive workMode from feature's branchName
       setWorkMode(feature.branchName ? 'custom' : 'current');
       // Reset history tracking state
@@ -230,6 +237,7 @@ export function EditFeatureDialog({
       planningMode,
       requirePlanApproval,
       workMode,
+      taskType,
       dependencies: parentDependencies,
       childDependencies: childDepsChanged ? childDependencies : undefined,
     };
@@ -407,37 +415,41 @@ export function EditFeatureDialog({
                 <Cpu className="w-4 h-4 text-muted-foreground" />
                 <span>AI & Execution</span>
               </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onClose();
-                        navigate({ to: '/settings', search: { view: 'defaults' } });
-                      }}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <Settings2 className="w-3.5 h-3.5" />
-                      <span>Edit Defaults</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Change default model and planning settings for new features</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              {isAdmin && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          navigate({ to: '/settings', search: { view: 'defaults' } });
+                        }}
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Settings2 className="w-3.5 h-3.5" />
+                        <span>Edit Defaults</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Change default model and planning settings for new features</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Model</Label>
-              <PhaseModelSelector
-                value={modelEntry}
-                onChange={handleModelChange}
-                compact
-                align="end"
-              />
-            </div>
+            {isAdmin && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Model</Label>
+                <PhaseModelSelector
+                  value={modelEntry}
+                  onChange={handleModelChange}
+                  compact
+                  align="end"
+                />
+              </div>
+            )}
 
             <div className="grid gap-3 grid-cols-2">
               <div className="space-y-1.5">
@@ -502,6 +514,7 @@ export function EditFeatureDialog({
                       checked={requirePlanApproval}
                       onCheckedChange={(checked) => setRequirePlanApproval(!!checked)}
                       disabled={
+                        !isAdmin ||
                         !modelSupportsPlanningMode ||
                         planningMode === 'skip' ||
                         planningMode === 'lite'
@@ -532,6 +545,11 @@ export function EditFeatureDialog({
             <div className={sectionHeaderClass}>
               <FolderKanban className="w-4 h-4 text-muted-foreground" />
               <span>Organization</span>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Type</Label>
+              <TaskTypeSelector selectedType={taskType} onTypeSelect={setTaskType} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -565,28 +583,30 @@ export function EditFeatureDialog({
               </div>
             </div>
 
-            {/* Work Mode Selector */}
-            <div className="pt-2">
-              <WorkModeSelector
-                workMode={workMode}
-                onWorkModeChange={setWorkMode}
-                branchName={editingFeature.branchName ?? ''}
-                onBranchNameChange={(value) =>
-                  setEditingFeature({
-                    ...editingFeature,
-                    branchName: value,
-                  })
-                }
-                branchSuggestions={branchSuggestions}
-                branchCardCounts={branchCardCounts}
-                currentBranch={currentBranch}
-                disabled={editingFeature.status !== 'backlog'}
-                testIdPrefix="edit-feature-work-mode"
-              />
-            </div>
+            {/* Work Mode Selector - admin only */}
+            {isAdmin && (
+              <div className="pt-2">
+                <WorkModeSelector
+                  workMode={workMode}
+                  onWorkModeChange={setWorkMode}
+                  branchName={editingFeature.branchName ?? ''}
+                  onBranchNameChange={(value) =>
+                    setEditingFeature({
+                      ...editingFeature,
+                      branchName: value,
+                    })
+                  }
+                  branchSuggestions={branchSuggestions}
+                  branchCardCounts={branchCardCounts}
+                  currentBranch={currentBranch}
+                  disabled={editingFeature.status !== 'backlog'}
+                  testIdPrefix="edit-feature-work-mode"
+                />
+              </div>
+            )}
 
-            {/* Dependencies */}
-            {allFeatures.length > 1 && (
+            {/* Dependencies - admin only */}
+            {isAdmin && allFeatures.length > 1 && (
               <div className="pt-2 space-y-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">

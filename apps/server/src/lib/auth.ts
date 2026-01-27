@@ -326,6 +326,13 @@ function checkAuthentication(
   query: Record<string, string | undefined>,
   cookies: Record<string, string | undefined>
 ): AuthResult {
+  // Check for JWT Bearer token in Authorization header (team auth mode)
+  const authHeader = headers['authorization'] as string | undefined;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    // Let the JWT middleware handle validation later; just pass through here
+    return { authenticated: true };
+  }
+
   // Check for API key in header (Electron mode)
   const headerKey = headers['x-api-key'] as string | undefined;
   if (headerKey) {

@@ -37,6 +37,7 @@ import { SandboxRejectionScreen } from '@/components/dialogs/sandbox-rejection-s
 import { LoadingState } from '@/components/ui/loading-state';
 import { useProjectSettingsLoader } from '@/hooks/use-project-settings-loader';
 import { useIsCompact } from '@/hooks/use-media-query';
+import { TeamAuthGuard } from '@/components/auth/team-auth-guard';
 import type { Project } from '@/lib/electron';
 
 const logger = createLogger('RootLayout');
@@ -837,9 +838,10 @@ function RootLayoutContent() {
   }
 
   // Show dashboard page (full screen, no sidebar) - authenticated only
+  // Requires AECORD team login
   if (isDashboardRoute) {
     return (
-      <>
+      <TeamAuthGuard>
         <main className="h-screen overflow-hidden" data-testid="app-container">
           <Outlet />
           <Toaster richColors position="bottom-right" />
@@ -849,7 +851,7 @@ function RootLayoutContent() {
           onConfirm={handleSandboxConfirm}
           onDeny={handleSandboxDeny}
         />
-      </>
+      </TeamAuthGuard>
     );
   }
 
@@ -858,8 +860,9 @@ function RootLayoutContent() {
   const showProjectSwitcher =
     !isDashboardRoute && !isSetupRoute && !isLoginRoute && !isLoggedOutRoute && !isCompact;
 
+  // Main app view - requires AECORD team login
   return (
-    <>
+    <TeamAuthGuard>
       <main className="flex h-screen overflow-hidden" data-testid="app-container">
         {/* Full-width titlebar drag region for Electron window dragging */}
         {isElectron() && (
@@ -890,7 +893,7 @@ function RootLayoutContent() {
         onConfirm={handleSandboxConfirm}
         onDeny={handleSandboxDeny}
       />
-    </>
+    </TeamAuthGuard>
   );
 }
 

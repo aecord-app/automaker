@@ -14,7 +14,7 @@ import { KanbanColumn, KanbanCard, EmptyStateCard } from './components';
 import { Feature, useAppStore, formatShortcut } from '@/store/app-store';
 import { Archive, Settings2, CheckSquare, GripVertical, Plus } from 'lucide-react';
 import { useResponsiveKanban } from '@/hooks/use-responsive-kanban';
-import { getColumnsWithPipeline, type ColumnId } from './constants';
+import { getAecordColumnsWithPipeline, type ColumnId } from './constants';
 import type { PipelineConfig } from '@automaker/types';
 import { cn } from '@/lib/utils';
 interface KanbanBoardProps {
@@ -299,7 +299,7 @@ export function KanbanBoard({
   className,
 }: KanbanBoardProps) {
   // Generate columns including pipeline steps
-  const columns = useMemo(() => getColumnsWithPipeline(pipelineConfig), [pipelineConfig]);
+  const columns = useMemo(() => getAecordColumnsWithPipeline(pipelineConfig), [pipelineConfig]);
 
   // Get the keyboard shortcut for adding features
   const keyboardShortcuts = useAppStore((state) => state.keyboardShortcuts);

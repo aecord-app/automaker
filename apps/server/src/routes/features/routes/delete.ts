@@ -4,9 +4,10 @@
 
 import type { Request, Response } from 'express';
 import { FeatureLoader } from '../../../services/feature-loader.js';
+import type { EventEmitter } from '../../../lib/events.js';
 import { getErrorMessage, logError } from '../common.js';
 
-export function createDeleteHandler(featureLoader: FeatureLoader) {
+export function createDeleteHandler(featureLoader: FeatureLoader, events?: EventEmitter) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const { projectPath, featureId } = req.body as {
@@ -23,6 +24,12 @@ export function createDeleteHandler(featureLoader: FeatureLoader) {
       }
 
       const success = await featureLoader.delete(projectPath, featureId);
+
+      // Emit feature_deleted event for real-time sync
+      if (success && events) {
+        events.emit('feature:deleted', { featureId, projectPath });
+      }
+
       res.json({ success });
     } catch (error) {
       logError(error, 'Delete feature failed');

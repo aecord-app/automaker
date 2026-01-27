@@ -31,6 +31,9 @@ import {
 import { toast } from 'sonner';
 import { WorkspacePickerModal } from '@/components/dialogs/workspace-picker-modal';
 import { NewProjectModal } from '@/components/dialogs/new-project-modal';
+import { TeamProjectsPicker } from '@/components/dialogs/team-projects-picker';
+import { useTeamProjects } from '@/hooks/use-team-projects';
+import { useAuthStore } from '@/store/auth-store';
 import { getHttpApiClient } from '@/lib/http-api-client';
 import type { StarterTemplate } from '@/lib/templates';
 import { useNavigate } from '@tanstack/react-router';
@@ -52,6 +55,17 @@ export function WelcomeView() {
     projectPath: string;
   } | null>(null);
   const [showWorkspacePicker, setShowWorkspacePicker] = useState(false);
+  const [showTeamProjectsPicker, setShowTeamProjectsPicker] = useState(false);
+
+  // Team projects access control
+  const user = useAuthStore((state) => state.user);
+  const {
+    canBrowseFilesystem,
+    projects: teamProjects,
+    isLoading: isLoadingTeamProjects,
+  } = useTeamProjects();
+  const isAdmin = user?.role === 'admin';
+  const hasTeamProjects = teamProjects.length > 0;
 
   /**
    * Kick off project analysis agent to analyze the codebase
@@ -141,6 +155,18 @@ export function WelcomeView() {
   );
 
   const handleOpenProject = useCallback(async () => {
+    // If user is logged in and cannot browse filesystem, show team projects picker
+    if (user && !canBrowseFilesystem) {
+      if (hasTeamProjects) {
+        setShowTeamProjectsPicker(true);
+      } else {
+        toast.error('No projects available', {
+          description: 'Contact your administrator to get access to projects',
+        });
+      }
+      return;
+    }
+
     try {
       // Check if workspace is configured
       const httpClient = getHttpApiClient();
@@ -173,7 +199,7 @@ export function WelcomeView() {
         await initializeAndOpenProject(path, name);
       }
     }
-  }, [initializeAndOpenProject]);
+  }, [initializeAndOpenProject, user, canBrowseFilesystem, hasTeamProjects]);
 
   /**
    * Handle selecting a project from workspace picker
@@ -181,6 +207,17 @@ export function WelcomeView() {
   const handleWorkspaceSelect = useCallback(
     async (path: string, name: string) => {
       setShowWorkspacePicker(false);
+      await initializeAndOpenProject(path, name);
+    },
+    [initializeAndOpenProject]
+  );
+
+  /**
+   * Handle selecting a project from team projects picker
+   */
+  const handleTeamProjectSelect = useCallback(
+    async (path: string, name: string) => {
+      setShowTeamProjectsPicker(false);
       await initializeAndOpenProject(path, name);
     },
     [initializeAndOpenProject]
@@ -549,52 +586,56 @@ export function WelcomeView() {
       <div className="flex-1 overflow-y-auto p-8">
         <div className="max-w-5xl mx-auto">
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
-            {/* New Project Card */}
-            <div
-              className="group relative rounded-xl border border-border bg-card/80 backdrop-blur-sm hover:bg-card hover:border-brand-500/30 hover:shadow-xl hover:shadow-brand-500/5 transition-all duration-300 hover:-translate-y-1"
-              data-testid="new-project-card"
-            >
-              <div className="absolute inset-0 rounded-xl bg-linear-to-br from-brand-500/5 via-transparent to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative p-6 h-full flex flex-col">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className="w-12 h-12 rounded-xl bg-linear-to-br from-brand-500 to-brand-600 shadow-lg shadow-brand-500/25 flex items-center justify-center group-hover:scale-105 group-hover:shadow-brand-500/40 transition-all duration-300 shrink-0">
-                    <Plus className="w-6 h-6 text-white" />
+          <div
+            className={`grid grid-cols-1 ${canBrowseFilesystem ? 'md:grid-cols-2' : ''} gap-6 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100`}
+          >
+            {/* New Project Card - Only show for users who can browse filesystem */}
+            {canBrowseFilesystem && (
+              <div
+                className="group relative rounded-xl border border-border bg-card/80 backdrop-blur-sm hover:bg-card hover:border-brand-500/30 hover:shadow-xl hover:shadow-brand-500/5 transition-all duration-300 hover:-translate-y-1"
+                data-testid="new-project-card"
+              >
+                <div className="absolute inset-0 rounded-xl bg-linear-to-br from-brand-500/5 via-transparent to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative p-6 h-full flex flex-col">
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="w-12 h-12 rounded-xl bg-linear-to-br from-brand-500 to-brand-600 shadow-lg shadow-brand-500/25 flex items-center justify-center group-hover:scale-105 group-hover:shadow-brand-500/40 transition-all duration-300 shrink-0">
+                      <Plus className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold text-foreground mb-1.5">New Project</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        Create a new project from scratch with AI-powered development
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-foreground mb-1.5">New Project</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Create a new project from scratch with AI-powered development
-                    </p>
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        className="w-full mt-5 bg-linear-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white border-0 shadow-md shadow-brand-500/20 hover:shadow-brand-500/30 transition-all"
+                        data-testid="create-new-project"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create Project
+                        <ChevronDown className="w-4 h-4 ml-2" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem onClick={handleNewProject} data-testid="quick-setup-option">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Quick Setup
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={handleInteractiveMode}
+                        data-testid="interactive-mode-option"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Interactive Mode
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      className="w-full mt-5 bg-linear-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white border-0 shadow-md shadow-brand-500/20 hover:shadow-brand-500/30 transition-all"
-                      data-testid="create-new-project"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create Project
-                      <ChevronDown className="w-4 h-4 ml-2" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={handleNewProject} data-testid="quick-setup-option">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Quick Setup
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={handleInteractiveMode}
-                      data-testid="interactive-mode-option"
-                    >
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      Interactive Mode
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
-            </div>
+            )}
 
             {/* Open Project Card */}
             <div
@@ -609,9 +650,13 @@ export function WelcomeView() {
                     <FolderOpen className="w-6 h-6 text-muted-foreground group-hover:text-blue-500 transition-colors duration-300" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-foreground mb-1.5">Open Project</h3>
+                    <h3 className="text-lg font-semibold text-foreground mb-1.5">
+                      {canBrowseFilesystem ? 'Open Project' : 'Select Project'}
+                    </h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      Open an existing project folder to continue working
+                      {canBrowseFilesystem
+                        ? 'Open an existing project folder to continue working'
+                        : 'Choose from available team projects to start working'}
                     </p>
                   </div>
                 </div>
@@ -621,7 +666,7 @@ export function WelcomeView() {
                   data-testid="open-existing-project"
                 >
                   <FolderOpen className="w-4 h-4 mr-2" />
-                  Browse Folder
+                  {canBrowseFilesystem ? 'Browse Folder' : 'View Team Projects'}
                 </Button>
               </div>
             </div>
@@ -773,6 +818,13 @@ export function WelcomeView() {
         open={showWorkspacePicker}
         onOpenChange={setShowWorkspacePicker}
         onSelect={handleWorkspaceSelect}
+      />
+
+      {/* Team Projects Picker Modal (for non-admin users) */}
+      <TeamProjectsPicker
+        open={showTeamProjectsPicker}
+        onOpenChange={setShowTeamProjectsPicker}
+        onSelect={handleTeamProjectSelect}
       />
 
       {/* Loading overlay when opening project */}

@@ -64,8 +64,14 @@ import { CommitWorktreeDialog } from './board-view/dialogs/commit-worktree-dialo
 import { CreatePRDialog } from './board-view/dialogs/create-pr-dialog';
 import { CreateBranchDialog } from './board-view/dialogs/create-branch-dialog';
 import { WorktreePanel } from './board-view/worktree-panel';
+import { useAuthStore } from '@/store/auth-store';
 import type { PRInfo, WorktreeInfo, MergeConflictInfo } from './board-view/worktree-panel/types';
-import { COLUMNS, getColumnsWithPipeline } from './board-view/constants';
+import {
+  COLUMNS,
+  AECORD_COLUMNS,
+  getColumnsWithPipeline,
+  getAecordColumnsWithPipeline,
+} from './board-view/constants';
 import {
   useBoardFeatures,
   useBoardDragDrop,
@@ -141,6 +147,9 @@ export function BoardView() {
       setPipelineConfig: state.setPipelineConfig,
     }))
   );
+
+  const boardUser = useAuthStore((state) => state.user);
+  const isBoardAdmin = boardUser?.role === 'admin';
   // Fetch pipeline config via React Query
   const { data: pipelineConfig } = usePipelineConfig(currentProject?.path);
   const queryClient = useQueryClient();
@@ -379,7 +388,7 @@ export function BoardView() {
 
     // Priority 2: Columns
     const columnCollisions = pointerCollisions.filter((collision: any) =>
-      COLUMNS.some((col) => col.id === collision.id)
+      AECORD_COLUMNS.some((col) => col.id === collision.id)
     );
 
     // If we found a column collision, use that
@@ -1037,6 +1046,7 @@ export function BoardView() {
     runningAutoTasks,
     persistFeatureUpdate,
     handleStartImplementation,
+    useAecordWorkflow: true,
   });
 
   // Handle dependency link creation
@@ -1096,7 +1106,7 @@ export function BoardView() {
   // Build columnFeaturesMap for ListView
   // pipelineConfig is now from usePipelineConfig React Query hook at the top
   const columnFeaturesMap = useMemo(() => {
-    const columns = getColumnsWithPipeline(pipelineConfig);
+    const columns = getAecordColumnsWithPipeline(pipelineConfig);
     const map: Record<string, typeof hookFeatures> = {};
     for (const column of columns) {
       map[column.id] = getColumnFeatures(column.id as any);
@@ -1321,7 +1331,7 @@ export function BoardView() {
         onDragEnd={handleDragEnd}
       >
         {/* Worktree Panel - conditionally rendered based on visibility setting */}
-        {(worktreePanelVisibleByProject[currentProject.path] ?? true) && (
+        {isBoardAdmin && (worktreePanelVisibleByProject[currentProject.path] ?? true) && (
           <WorktreePanel
             refreshTrigger={worktreeRefreshKey}
             projectPath={currentProject.path}

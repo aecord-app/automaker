@@ -4,6 +4,7 @@
 
 import type { Request, Response } from 'express';
 import { FeatureLoader } from '../../../services/feature-loader.js';
+import type { EventEmitter } from '../../../lib/events.js';
 import type { Feature, FeatureStatus } from '@automaker/types';
 import { getErrorMessage, logError } from '../common.js';
 import { createLogger } from '@automaker/utils';
@@ -13,7 +14,7 @@ const logger = createLogger('features/update');
 // Statuses that should trigger syncing to app_spec.txt
 const SYNC_TRIGGER_STATUSES: FeatureStatus[] = ['verified', 'completed'];
 
-export function createUpdateHandler(featureLoader: FeatureLoader) {
+export function createUpdateHandler(featureLoader: FeatureLoader, events?: EventEmitter) {
   return async (req: Request, res: Response): Promise<void> => {
     try {
       const {
@@ -84,6 +85,15 @@ export function createUpdateHandler(featureLoader: FeatureLoader) {
           // Log the sync error but don't fail the update operation
           logger.error(`Failed to sync feature to app_spec.txt:`, syncError);
         }
+      }
+
+      // Emit feature_updated event for real-time sync
+      if (events) {
+        events.emit('feature:updated', {
+          featureId: updated.id,
+          featureName: updated.title || updated.name,
+          projectPath,
+        });
       }
 
       res.json({ success: true, feature: updated });
