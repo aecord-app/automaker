@@ -14,6 +14,7 @@ import { getElectronAPI } from '@/lib/electron';
 import { isConnectionError, handleServerOffline } from '@/lib/http-api-client';
 import { toast } from 'sonner';
 import { useAutoMode } from '@/hooks/use-auto-mode';
+import { useAuthStore } from '@/store/auth-store';
 import { useVerifyFeature, useResumeFeature } from '@/hooks/mutations';
 import { truncateDescription } from '@/lib/utils';
 import { getBlockingDependencies } from '@automaker/dependency-resolver';
@@ -94,6 +95,7 @@ export function useBoardActions({
     getPrimaryWorktreeBranch,
     getAutoModeState,
   } = useAppStore();
+  const authUser = useAuthStore((state) => state.user);
   const autoMode = useAutoMode();
 
   // React Query mutations for feature operations
@@ -136,11 +138,16 @@ export function useBoardActions({
       } else if (workMode === 'auto') {
         // Auto-generate a branch name based on primary branch (main/master) and timestamp
         // Always use primary branch to avoid nested feature/feature/... paths
-        const baseBranch =
-          (currentProject?.path ? getPrimaryWorktreeBranch(currentProject.path) : null) || 'main';
-        const timestamp = Date.now();
-        const randomSuffix = Math.random().toString(36).substring(2, 6);
-        finalBranchName = `feature/${baseBranch}-${timestamp}-${randomSuffix}`;
+        // Branch naming: {taskType}/{service}/{id}-{slug}
+        const taskType = (featureData as any).taskType || 'feature';
+        const service = (featureData as any).category || 'general';
+        const slugTitle = (featureData.title || 'task')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 40);
+        const idSuffix = Math.random().toString(36).substring(2, 8);
+        finalBranchName = `${taskType}/${service}/${idSuffix}-${slugTitle}`;
       } else {
         // Custom mode - use provided branch name
         finalBranchName = featureData.branchName || undefined;
@@ -193,6 +200,8 @@ export function useBoardActions({
         status: 'backlog' as const,
         branchName: finalBranchName,
         dependencies: featureData.dependencies || [],
+        createdAt: new Date().toISOString(),
+        createdBy: authUser?.username || authUser?.id || 'unknown',
       };
       const createdFeature = addFeature(newFeatureData);
       // Must await to ensure feature exists on server before user can drag it
@@ -297,11 +306,16 @@ export function useBoardActions({
       } else if (workMode === 'auto') {
         // Auto-generate a branch name based on primary branch (main/master) and timestamp
         // Always use primary branch to avoid nested feature/feature/... paths
-        const baseBranch =
-          (currentProject?.path ? getPrimaryWorktreeBranch(currentProject.path) : null) || 'main';
-        const timestamp = Date.now();
-        const randomSuffix = Math.random().toString(36).substring(2, 6);
-        finalBranchName = `feature/${baseBranch}-${timestamp}-${randomSuffix}`;
+        // Branch naming: {taskType}/{service}/{id}-{slug}
+        const taskType = (featureData as any).taskType || 'feature';
+        const service = (featureData as any).category || 'general';
+        const slugTitle = (featureData.title || 'task')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 40);
+        const idSuffix = Math.random().toString(36).substring(2, 8);
+        finalBranchName = `${taskType}/${service}/${idSuffix}-${slugTitle}`;
       } else {
         finalBranchName = updates.branchName || undefined;
       }

@@ -56,6 +56,7 @@ export const GLOBAL_NAV_GROUPS: NavigationGroup[] = [
         ],
       },
       { id: 'mcp-servers', label: 'MCP Servers', icon: Plug },
+      { id: 'agent-profiles', label: 'Agent Profiles', icon: Bot },
     ],
   },
   {

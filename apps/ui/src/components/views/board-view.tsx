@@ -55,6 +55,9 @@ import {
   FollowUpDialog,
   PlanApprovalDialog,
   PullResolveConflictsDialog,
+  ApprovalQueueDialog,
+  PlanReviewDialog,
+  ConflictWarningDialog,
 } from './board-view/dialogs';
 import type { DependencyLinkType } from './board-view/dialogs';
 import { PipelineSettingsDialog } from './board-view/dialogs/pipeline-settings-dialog';
@@ -211,6 +214,19 @@ export function BoardView() {
 
   // Pipeline settings dialog state
   const [showPipelineSettings, setShowPipelineSettings] = useState(false);
+
+  // Approval queue dialog state
+  const [showApprovalQueue, setShowApprovalQueue] = useState(false);
+
+  // Plan review dialog state
+  const [planReviewFeature, setPlanReviewFeature] = useState<Feature | null>(null);
+
+  // Conflict warning dialog state
+  const [conflictWarning, setConflictWarning] = useState<{
+    open: boolean;
+    conflicts: any[];
+    feature: Feature | null;
+  }>({ open: false, conflicts: [], feature: null });
 
   // Follow-up state hook
   const {
@@ -1313,6 +1329,7 @@ export function BoardView() {
         onOpenPlanDialog={() => setShowPlanDialog(true)}
         hasPendingPlan={Boolean(pendingBacklogPlan)}
         onOpenPendingPlan={() => setShowPlanDialog(true)}
+        onOpenApprovalQueue={() => setShowApprovalQueue(true)}
         isMounted={isMounted}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -1794,6 +1811,40 @@ export function BoardView() {
           setWorktreeRefreshKey((k) => k + 1);
           setSelectedWorktreeForAction(null);
         }}
+      />
+
+      {/* Approval Queue Dialog */}
+      <ApprovalQueueDialog
+        open={showApprovalQueue}
+        onOpenChange={setShowApprovalQueue}
+        projectPath={currentProject.path}
+      />
+
+      {/* Plan Review Dialog */}
+      <PlanReviewDialog
+        open={planReviewFeature !== null}
+        onOpenChange={(open) => !open && setPlanReviewFeature(null)}
+        feature={planReviewFeature}
+        projectPath={currentProject.path}
+      />
+
+      {/* Conflict Warning Dialog */}
+      <ConflictWarningDialog
+        open={conflictWarning.open}
+        onOpenChange={(open) => setConflictWarning((prev) => ({ ...prev, open }))}
+        conflicts={conflictWarning.conflicts}
+        featureTitle={conflictWarning.feature?.title}
+        onQueue={() => {
+          toast.info('Task queued — will start when conflicting locks are released');
+          setConflictWarning({ open: false, conflicts: [], feature: null });
+        }}
+        onForceStart={() => {
+          if (conflictWarning.feature) {
+            handleStartImplementation(conflictWarning.feature);
+          }
+          setConflictWarning({ open: false, conflicts: [], feature: null });
+        }}
+        onCancel={() => setConflictWarning({ open: false, conflicts: [], feature: null })}
       />
 
       {/* Init Script Indicator - floating overlay for worktree init script status */}

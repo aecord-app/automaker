@@ -13,3 +13,6 @@ export { MassEditDialog } from './mass-edit-dialog';
 export { PullResolveConflictsDialog } from './pull-resolve-conflicts-dialog';
 export { PushToRemoteDialog } from './push-to-remote-dialog';
 export { ViewWorktreeChangesDialog } from './view-worktree-changes-dialog';
+export { ApprovalQueueDialog } from './approval-queue-dialog';
+export { PlanReviewDialog } from './plan-review-dialog';
+export { ConflictWarningDialog } from './conflict-warning-dialog';

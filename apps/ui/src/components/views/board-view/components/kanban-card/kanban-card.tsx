@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Feature, useAppStore } from '@/store/app-store';
+import { useAuthStore } from '@/store/auth-store';
 import { useShallow } from 'zustand/react/shallow';
 import { CardBadges, PriorityBadges } from './card-badges';
 import { CardHeaderSection } from './card-header';
@@ -108,6 +109,8 @@ export const KanbanCard = memo(function KanbanCard({
       currentProject: state.currentProject,
     }))
   );
+  const cardUser = useAuthStore((state) => state.user);
+  const isCardAdmin = cardUser?.role === 'admin';
   const [isLifted, setIsLifted] = useState(false);
 
   useLayoutEffect(() => {
@@ -269,6 +272,7 @@ export const KanbanCard = memo(function KanbanCard({
         <CardActions
           feature={feature}
           isCurrentAutoTask={!!isCurrentAutoTask}
+          isAdmin={isCardAdmin}
           hasContext={hasContext}
           shortcutKey={shortcutKey}
           isSelectionMode={isSelectionMode}

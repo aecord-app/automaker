@@ -2144,7 +2144,11 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
 
   addFeature: (feature) => {
     const id = feature.id || `feature-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const featureWithId = { ...feature, id } as unknown as Feature;
+    const featureWithId = {
+      ...feature,
+      id,
+      createdAt: feature.createdAt || new Date().toISOString(),
+    } as unknown as Feature;
     set({ features: [...get().features, featureWithId] });
     return featureWithId;
   },

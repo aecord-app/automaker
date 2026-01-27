@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Wand2, GitBranch, ClipboardCheck } from 'lucide-react';
+import { Wand2, GitBranch, ClipboardCheck, ShieldCheck } from 'lucide-react';
 import { UsagePopover } from '@/components/usage-popover';
 import { useAppStore } from '@/store/app-store';
 import { useSetupStore } from '@/store/setup-store';
@@ -28,6 +28,7 @@ interface BoardHeaderProps {
   onOpenPlanDialog: () => void;
   hasPendingPlan?: boolean;
   onOpenPendingPlan?: () => void;
+  onOpenApprovalQueue?: () => void;
   isMounted: boolean;
   // Search bar props
   searchQuery: string;
@@ -55,6 +56,7 @@ export function BoardHeader({
   onOpenPlanDialog,
   hasPendingPlan,
   onOpenPendingPlan,
+  onOpenApprovalQueue,
   isMounted,
   searchQuery,
   onSearchChange,
@@ -208,6 +210,20 @@ export function BoardHeader({
               runningAgentsCount={runningAgentsCount}
               onConcurrencyChange={onConcurrencyChange}
             />
+          </div>
+        )}
+
+        {/* Approvals Button - only show on desktop, admin only */}
+        {isMounted && !isTablet && isAdmin && onOpenApprovalQueue && (
+          <div className={controlContainerClass} data-testid="approvals-button-container">
+            <button
+              onClick={onOpenApprovalQueue}
+              className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+              data-testid="approvals-button"
+            >
+              <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Approvals</span>
+            </button>
           </div>
         )}
 

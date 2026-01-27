@@ -305,6 +305,16 @@ export interface Feature {
    */
   serviceArea?: string;
 
+  /**
+   * ISO timestamp when the feature was created
+   */
+  createdAt?: string;
+
+  /**
+   * User ID or username of who created/submitted the feature
+   */
+  createdBy?: string;
+
   [key: string]: unknown; // Keep catch-all for extensibility
 }
 

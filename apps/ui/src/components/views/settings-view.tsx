@@ -30,6 +30,8 @@ import { EventHooksSection } from './settings-view/event-hooks';
 import { ImportExportDialog } from './settings-view/components/import-export-dialog';
 import { RolePermissionsManager } from '@/components/settings/role-permissions-manager';
 import { TeamProjectsManager } from '@/components/settings/team-projects-manager';
+import { ChangePasswordSection } from './settings-view/account/change-password-section';
+import { AgentProfilesSection } from './settings-view/agent-profiles/agent-profiles-section';
 import type { Theme } from './settings-view/shared/types';
 
 // Breakpoint constant for mobile (matches Tailwind lg breakpoint)
@@ -182,7 +184,16 @@ export function SettingsView() {
           <WorktreesSection useWorktrees={useWorktrees} onUseWorktreesChange={setUseWorktrees} />
         );
       case 'account':
-        return <AccountSection />;
+        return (
+          <>
+            <AccountSection />
+            <div className="mt-6">
+              <ChangePasswordSection />
+            </div>
+          </>
+        );
+      case 'agent-profiles':
+        return <AgentProfilesSection />;
       case 'security':
         return (
           <SecuritySection

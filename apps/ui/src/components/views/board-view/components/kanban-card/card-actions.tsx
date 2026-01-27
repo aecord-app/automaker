@@ -17,6 +17,7 @@ import {
 interface CardActionsProps {
   feature: Feature;
   isCurrentAutoTask: boolean;
+  isAdmin?: boolean;
   hasContext?: boolean;
   shortcutKey?: string;
   isSelectionMode?: boolean;
@@ -36,6 +37,7 @@ interface CardActionsProps {
 export const CardActions = memo(function CardActions({
   feature,
   isCurrentAutoTask,
+  isAdmin = false,
   hasContext,
   shortcutKey,
   isSelectionMode = false,
@@ -60,8 +62,8 @@ export const CardActions = memo(function CardActions({
     <div className="flex flex-wrap gap-1.5 -mx-3 -mb-3 px-3 pb-3">
       {isCurrentAutoTask && (
         <>
-          {/* Approve Plan button - PRIORITY: shows even when agent is "running" (paused for approval) */}
-          {feature.planSpec?.status === 'generated' && onApprovePlan && (
+          {/* Approve Plan button - admin only */}
+          {isAdmin && feature.planSpec?.status === 'generated' && onApprovePlan && (
             <Button
               variant="default"
               size="sm"
@@ -101,7 +103,8 @@ export const CardActions = memo(function CardActions({
               )}
             </Button>
           )}
-          {onForceStop && (
+          {/* Force Stop - admin only */}
+          {isAdmin && onForceStop && (
             <Button
               variant="destructive"
               size="sm"
@@ -122,8 +125,8 @@ export const CardActions = memo(function CardActions({
         (feature.status === 'in_progress' ||
           (typeof feature.status === 'string' && feature.status.startsWith('pipeline_'))) && (
           <>
-            {/* Approve Plan button - shows when plan is generated and waiting for approval */}
-            {feature.planSpec?.status === 'generated' && onApprovePlan && (
+            {/* Approve Plan button - admin only */}
+            {isAdmin && feature.planSpec?.status === 'generated' && onApprovePlan && (
               <Button
                 variant="default"
                 size="sm"
@@ -139,52 +142,58 @@ export const CardActions = memo(function CardActions({
                 Approve Plan
               </Button>
             )}
-            {feature.skipTests && onManualVerify ? (
-              <Button
-                variant="default"
-                size="sm"
-                className="flex-1 h-7 text-[11px]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onManualVerify();
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                data-testid={`manual-verify-${feature.id}`}
-              >
-                <CheckCircle2 className="w-3 h-3 mr-1" />
-                Verify
-              </Button>
-            ) : onResume ? (
-              <Button
-                variant="default"
-                size="sm"
-                className="flex-1 h-7 text-[11px] bg-[var(--status-success)] hover:bg-[var(--status-success)]/90"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onResume();
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                data-testid={`resume-feature-${feature.id}`}
-              >
-                <RotateCcw className="w-3 h-3 mr-1" />
-                Resume
-              </Button>
-            ) : onVerify ? (
-              <Button
-                variant="default"
-                size="sm"
-                className="flex-1 h-7 text-[11px] bg-[var(--status-success)] hover:bg-[var(--status-success)]/90"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onVerify();
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                data-testid={`verify-feature-${feature.id}`}
-              >
-                <CheckCircle2 className="w-3 h-3 mr-1" />
-                Verify
-              </Button>
-            ) : null}
+            {/* Verify / Resume / Manual Verify - admin only */}
+            {isAdmin && (
+              <>
+                {feature.skipTests && onManualVerify ? (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex-1 h-7 text-[11px]"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onManualVerify();
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    data-testid={`manual-verify-${feature.id}`}
+                  >
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Verify
+                  </Button>
+                ) : onResume ? (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex-1 h-7 text-[11px] bg-[var(--status-success)] hover:bg-[var(--status-success)]/90"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onResume();
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    data-testid={`resume-feature-${feature.id}`}
+                  >
+                    <RotateCcw className="w-3 h-3 mr-1" />
+                    Resume
+                  </Button>
+                ) : onVerify ? (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="flex-1 h-7 text-[11px] bg-[var(--status-success)] hover:bg-[var(--status-success)]/90"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onVerify();
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    data-testid={`verify-feature-${feature.id}`}
+                  >
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Verify
+                  </Button>
+                ) : null}
+              </>
+            )}
+            {/* Logs - visible to all */}
             {onViewOutput && !feature.skipTests && (
               <Button
                 variant="secondary"
@@ -204,7 +213,7 @@ export const CardActions = memo(function CardActions({
         )}
       {!isCurrentAutoTask && feature.status === 'verified' && (
         <>
-          {/* Logs button */}
+          {/* Logs - visible to all */}
           {onViewOutput && (
             <Button
               variant="secondary"
@@ -221,8 +230,8 @@ export const CardActions = memo(function CardActions({
               <span className="truncate">Logs</span>
             </Button>
           )}
-          {/* Complete button */}
-          {onComplete && (
+          {/* Complete - admin only */}
+          {isAdmin && onComplete && (
             <Button
               variant="default"
               size="sm"
@@ -242,8 +251,8 @@ export const CardActions = memo(function CardActions({
       )}
       {!isCurrentAutoTask && feature.status === 'waiting_approval' && (
         <>
-          {/* Refine prompt button */}
-          {onFollowUp && (
+          {/* Refine - admin only */}
+          {isAdmin && onFollowUp && (
             <Button
               variant="secondary"
               size="sm"
@@ -259,38 +268,58 @@ export const CardActions = memo(function CardActions({
               <span className="truncate">Refine</span>
             </Button>
           )}
-          {/* Show Verify button if PR was created (changes are committed), otherwise show Mark as Verified button */}
-          {feature.prUrl && onManualVerify ? (
+          {/* Verify / Mark as Verified - admin only */}
+          {isAdmin && (
+            <>
+              {feature.prUrl && onManualVerify ? (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1 h-7 text-[11px]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onManualVerify();
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  data-testid={`verify-${feature.id}`}
+                >
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  Verify
+                </Button>
+              ) : onManualVerify ? (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1 h-7 text-[11px]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onManualVerify();
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  data-testid={`mark-as-verified-${feature.id}`}
+                >
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  Mark as Verified
+                </Button>
+              ) : null}
+            </>
+          )}
+          {/* Logs - visible to all */}
+          {onViewOutput && (
             <Button
-              variant="default"
+              variant="secondary"
               size="sm"
-              className="flex-1 h-7 text-[11px]"
+              className="h-7 text-[11px] px-2"
               onClick={(e) => {
                 e.stopPropagation();
-                onManualVerify();
+                onViewOutput();
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              data-testid={`verify-${feature.id}`}
+              data-testid={`view-output-waiting-${feature.id}`}
             >
-              <CheckCircle2 className="w-3 h-3 mr-1" />
-              Verify
+              <FileText className="w-3 h-3" />
             </Button>
-          ) : onManualVerify ? (
-            <Button
-              variant="default"
-              size="sm"
-              className="flex-1 h-7 text-[11px]"
-              onClick={(e) => {
-                e.stopPropagation();
-                onManualVerify();
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              data-testid={`mark-as-verified-${feature.id}`}
-            >
-              <CheckCircle2 className="w-3 h-3 mr-1" />
-              Mark as Verified
-            </Button>
-          ) : null}
+          )}
         </>
       )}
       {!isCurrentAutoTask &&
@@ -326,7 +355,7 @@ export const CardActions = memo(function CardActions({
                 <Eye className="w-3 h-3" />
               </Button>
             )}
-            {onImplement && (
+            {isAdmin && onImplement && (
               <Button
                 variant="default"
                 size="sm"
