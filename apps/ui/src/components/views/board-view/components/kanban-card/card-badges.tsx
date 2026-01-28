@@ -68,7 +68,15 @@ export const PriorityBadges = memo(function PriorityBadges({ feature }: Priority
       return [];
     }
     return getBlockingDependencies(feature, features);
-  }, [enableDependencyBlocking, feature, features]);
+  }, [
+    enableDependencyBlocking,
+    feature,
+    features,
+    feature.status,
+    feature.skipTests,
+    feature.dependencies,
+    feature.error,
+  ]);
 
   const isJustFinished = useMemo(() => {
     if (!feature.justFinishedAt || feature.status !== 'waiting_approval' || feature.error) {

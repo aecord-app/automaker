@@ -32,6 +32,7 @@ export function ModelSelector({
     codexModelsError,
     fetchCodexModels,
     disabledProviders,
+    defaultFeatureModel,
   } = useAppStore();
   const { cursorCliStatus, codexCliStatus } = useSetupStore();
 
@@ -93,7 +94,7 @@ export function ModelSelector({
       onModelSelect(defaultModelId);
     } else if (provider === 'claude' && selectedProvider !== 'claude') {
       // Switch to Claude's default model (canonical format)
-      onModelSelect('claude-sonnet');
+      onModelSelect(defaultFeatureModel?.model || 'claude-sonnet');
     }
   };
 
