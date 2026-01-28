@@ -335,6 +335,11 @@ export interface Feature {
    */
   developmentLog?: DevelopmentLogEntry[];
 
+  /**
+   * Beads issue ID if mirrored to beads tracker
+   */
+  beadId?: string;
+
   [key: string]: unknown; // Keep catch-all for extensibility
 }
 

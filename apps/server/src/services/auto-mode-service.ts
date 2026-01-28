@@ -72,6 +72,7 @@ import {
   getPhaseModelWithOverrides,
 } from '../lib/settings-helpers.js';
 import { getNotificationService } from './notification-service.js';
+import { getBeadsService } from './beads-service.js';
 
 const execAsync = promisify(exec);
 
@@ -1106,6 +1107,28 @@ export class AutoModeService {
         throw new Error(`Feature ${featureId} not found`);
       }
 
+      // Create beads issue for this feature (fire-and-forget)
+      if (!feature.beadId) {
+        try {
+          const beadsService = getBeadsService();
+          const priorityMap: Record<string, number> = { critical: 1, high: 2, medium: 3, low: 4 };
+          const beadPriority = feature.taskPriority ? priorityMap[feature.taskPriority] : 3;
+          const labels = feature.taskType ? [feature.taskType] : [];
+          const beadIssue = await beadsService.createIssue(
+            feature.title || feature.description?.slice(0, 80) || featureId,
+            beadPriority,
+            labels
+          );
+          if (beadIssue?.id) {
+            feature.beadId = beadIssue.id;
+            await this.saveFeatureField(projectPath, featureId, 'beadId', beadIssue.id);
+            logger.info(`Beads issue created: ${beadIssue.id} for feature ${featureId}`);
+          }
+        } catch (beadErr) {
+          logger.warn('Failed to create beads issue:', beadErr);
+        }
+      }
+
       // Check if feature has existing context - if so, resume instead of starting fresh
       // Skip this check if we're already being called with a continuation prompt (from resumeFeature)
       if (!options?.continuationPrompt) {
@@ -1335,6 +1358,13 @@ export class AutoModeService {
         console.warn('[AutoMode] Failed to record learnings:', learningError);
       }
 
+      // Close beads issue on completion (fire-and-forget)
+      if (feature.beadId) {
+        getBeadsService()
+          .closeIssue(feature.beadId as string)
+          .catch((e) => logger.warn('Failed to close beads issue:', e));
+      }
+
       this.emitAutoModeEvent('auto_mode_feature_complete', {
         featureId,
         featureName: feature.title,
@@ -1349,6 +1379,14 @@ export class AutoModeService {
       });
     } catch (error) {
       const errorInfo = classifyError(error);
+
+      // Comment on beads issue about failure/stop (fire-and-forget)
+      if (feature?.beadId) {
+        const msg = errorInfo.isAbort ? 'Stopped by user' : `Failed: ${errorInfo.message}`;
+        getBeadsService()
+          .updateProgress(feature.beadId as string, msg)
+          .catch(() => {});
+      }
 
       if (errorInfo.isAbort) {
         this.emitAutoModeEvent('auto_mode_feature_complete', {
@@ -2893,6 +2931,31 @@ Format your response as a structured markdown document.`;
       }
     } catch (error) {
       logger.error(`Failed to update feature status for ${featureId}:`, error);
+    }
+  }
+
+  /**
+   * Save a single field on a feature JSON file
+   */
+  private async saveFeatureField(
+    projectPath: string,
+    featureId: string,
+    field: string,
+    value: unknown
+  ): Promise<void> {
+    const featureDir = getFeatureDir(projectPath, featureId);
+    const featurePath = path.join(featureDir, 'feature.json');
+    try {
+      const result = await readJsonWithRecovery<Feature | null>(featurePath, null, {
+        maxBackups: DEFAULT_BACKUP_COUNT,
+        autoRestore: true,
+      });
+      const feature = result.data;
+      if (!feature) return;
+      (feature as any)[field] = value;
+      await atomicWriteJson(featurePath, feature, { backupCount: DEFAULT_BACKUP_COUNT });
+    } catch (error) {
+      logger.warn(`Failed to save feature field ${field} for ${featureId}:`, error);
     }
   }
 

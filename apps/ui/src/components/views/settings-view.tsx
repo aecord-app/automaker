@@ -33,6 +33,7 @@ import { TeamProjectsManager } from '@/components/settings/team-projects-manager
 import { TeamMembersManager } from '@/components/settings/team-members-manager';
 import { ChangePasswordSection } from './settings-view/account/change-password-section';
 import { AgentProfilesSection } from './settings-view/agent-profiles/agent-profiles-section';
+import { BeadsPanel } from '@/components/settings/beads-panel';
 import type { Theme } from './settings-view/shared/types';
 
 // Breakpoint constant for mobile (matches Tailwind lg breakpoint)
@@ -210,6 +211,8 @@ export function SettingsView() {
         return <TeamMembersManager />;
       case 'team-projects':
         return <TeamProjectsManager />;
+      case 'beads':
+        return <BeadsPanel />;
       default:
         return <ApiKeysSection />;
     }

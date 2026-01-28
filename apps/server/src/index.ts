@@ -84,6 +84,9 @@ import { getNotificationService } from './services/notification-service.js';
 import { createEventHistoryRoutes } from './routes/event-history/index.js';
 import { getEventHistoryService } from './services/event-history-service.js';
 
+// Beads task tracker integration
+import { createBeadsRoutes } from './routes/beads/index.js';
+
 // AECORD multi-developer team auth
 import { UserService } from './services/user-service.js';
 import { createJWTService } from './services/jwt-service.js';
@@ -453,6 +456,9 @@ app.use('/api/pipeline', createPipelineRoutes(pipelineService));
 app.use('/api/ideation', createIdeationRoutes(events, ideationService, featureLoader));
 app.use('/api/notifications', createNotificationsRoutes(notificationService));
 app.use('/api/event-history', createEventHistoryRoutes(eventHistoryService, settingsService));
+
+// Beads task tracker routes
+app.use('/api/beads', createBeadsRoutes());
 
 // Create HTTP server
 const server = createServer(app);
