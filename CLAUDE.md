@@ -191,3 +191,24 @@ Key data files:
 5. Plan generation
 6. Git worktree isolation
 7. Conflict detection
+
+---
+
+## Current Development Status (January 28, 2026)
+
+### Completed This Session
+
+- Fixed default model setting (uses store value instead of hardcoded 'claude-sonnet')
+- Fixed stale lock icon on feature cards (granular useMemo deps)
+- Added team members management (CRUD routes + settings UI)
+- Added server access power toggle for admin in sidebar
+- Removed file attachment count limit from Add Feature dialog
+- Fixed browse filesystem toggle to use correct setting key
+
+### Next Priorities
+
+1. Test bug fixes (default model, lock icon) in Electron app
+2. Complete team members CRUD testing
+3. Phase 1 onboarding testing
+4. Phase 2 profile polish
+5. Phase 3 admin review queue
