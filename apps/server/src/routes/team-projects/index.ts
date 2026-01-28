@@ -32,6 +32,7 @@ export function createTeamProjectsRoutes(dataDir: string, _jwtService: JWTServic
         projects,
         settings: {
           canBrowseFilesystem: canBrowse,
+          allowNonAdminBrowse: settings.allowNonAdminBrowse ?? false, // Raw setting for admin UI
           allowNonAdminAccess: settings.allowNonAdminAccess !== false, // Default to true
           defaultProjectId: settings.defaultProjectId,
         },

@@ -18,6 +18,7 @@ import {
   Code2,
   Webhook,
   FolderGit2,
+  Users2,
 } from 'lucide-react';
 import { AnthropicIcon, CursorIcon, OpenAIIcon, OpenCodeIcon } from '@/components/ui/provider-icon';
 import type { SettingsViewId } from '../hooks/use-settings-view';
@@ -72,6 +73,7 @@ export const GLOBAL_NAV_GROUPS: NavigationGroup[] = [
   {
     label: 'Team',
     items: [
+      { id: 'team-members', label: 'Team Members', icon: Users2 },
       { id: 'team-projects', label: 'Team Projects', icon: FolderGit2 },
       { id: 'role-permissions', label: 'Role Permissions', icon: Users },
     ],

@@ -1,10 +1,11 @@
 import type { NavigateOptions } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 import { formatShortcut } from '@/store/app-store';
-import { Activity, Settings } from 'lucide-react';
+import { Activity, Settings, Power } from 'lucide-react';
 import { TeamLoginWidget } from './team-login-widget';
 import { useAuthStore } from '@/store/auth-store';
 import { useRolePermissions } from '@/hooks/use-role-permissions';
+import { useTeamProjects } from '@/hooks/use-team-projects';
 
 interface SidebarFooterProps {
   sidebarOpen: boolean;
@@ -30,6 +31,15 @@ export function SidebarFooter({
   const { hasFeatureAccess } = useRolePermissions();
   const canAccessRunningAgents = user?.role && hasFeatureAccess('running-agents');
   const canAccessGlobalSettings = user?.role && hasFeatureAccess('global-settings');
+  const isAdmin = user?.role === 'admin';
+
+  // Server access control (admin only)
+  const { settings, updateSettings } = useTeamProjects();
+  const isServerAccessEnabled = settings.allowNonAdminAccess !== false;
+
+  const handleToggleServerAccess = () => {
+    updateSettings({ allowNonAdminAccess: !isServerAccessEnabled });
+  };
 
   return (
     <div
@@ -43,6 +53,93 @@ export function SidebarFooter({
     >
       {/* AECORD Team Login */}
       <TeamLoginWidget sidebarOpen={sidebarOpen} />
+
+      {/* Server Access Power Button - admin only */}
+      {isAdmin && (
+        <div className="px-2 pt-2">
+          <button
+            onClick={handleToggleServerAccess}
+            className={cn(
+              'group flex items-center w-full px-3 py-2.5 rounded-xl relative overflow-hidden titlebar-no-drag',
+              'transition-all duration-200 ease-out',
+              isServerAccessEnabled
+                ? [
+                    'bg-green-500/10 text-green-600 dark:text-green-400',
+                    'border border-green-500/30',
+                    'hover:bg-green-500/20',
+                  ]
+                : [
+                    'bg-destructive/10 text-destructive',
+                    'border border-destructive/30',
+                    'hover:bg-destructive/20',
+                  ],
+              sidebarOpen ? 'justify-start' : 'justify-center',
+              'hover:scale-[1.02] active:scale-[0.97]'
+            )}
+            title={
+              !sidebarOpen
+                ? isServerAccessEnabled
+                  ? 'Server: ON (click to disable)'
+                  : 'Server: OFF (click to enable)'
+                : undefined
+            }
+            data-testid="server-access-toggle"
+          >
+            <Power
+              className={cn(
+                'w-[18px] h-[18px] shrink-0 transition-all duration-200',
+                isServerAccessEnabled
+                  ? 'text-green-500 drop-shadow-sm'
+                  : 'text-destructive drop-shadow-sm'
+              )}
+            />
+            <span
+              className={cn(
+                'ml-3 font-medium text-sm flex-1 text-left',
+                sidebarOpen ? 'block' : 'hidden'
+              )}
+            >
+              Server Access
+            </span>
+            {sidebarOpen && (
+              <span
+                className={cn(
+                  'px-2 py-0.5 text-[10px] font-bold rounded-full uppercase',
+                  isServerAccessEnabled
+                    ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+                    : 'bg-destructive/20 text-destructive'
+                )}
+              >
+                {isServerAccessEnabled ? 'ON' : 'OFF'}
+              </span>
+            )}
+            {/* Status dot for collapsed state */}
+            {!sidebarOpen && (
+              <>
+                <span
+                  className={cn(
+                    'absolute top-1.5 right-1.5 w-2 h-2 rounded-full',
+                    isServerAccessEnabled ? 'bg-green-500' : 'bg-destructive',
+                    'shadow-sm'
+                  )}
+                />
+                <span
+                  className={cn(
+                    'absolute left-full ml-3 px-2.5 py-1.5 rounded-lg',
+                    'bg-popover text-popover-foreground text-xs font-medium',
+                    'border border-border shadow-lg',
+                    'opacity-0 group-hover:opacity-100',
+                    'transition-all duration-200 whitespace-nowrap z-50',
+                    'translate-x-1 group-hover:translate-x-0'
+                  )}
+                >
+                  Server Access: {isServerAccessEnabled ? 'ON' : 'OFF'}
+                </span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Running Agents Link - hidden by setting or permission */}
       {!hideRunningAgents && canAccessRunningAgents && (

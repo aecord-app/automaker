@@ -115,6 +115,9 @@ import { getTeamProjectsService } from './services/team-projects-service.js';
 import { createTeamProjectsRoutes } from './routes/team-projects/index.js';
 import { createServerAccessMiddleware } from './middleware/server-access.js';
 
+// AECORD team members
+import { createTeamMembersRoutes } from './routes/team-members/index.js';
+
 // Load environment variables
 dotenv.config();
 
@@ -420,6 +423,9 @@ app.use('/api/role-permissions', createRolePermissionsRoutes(DATA_DIR, jwtServic
 // AECORD team projects routes
 const teamProjectsService = getTeamProjectsService(DATA_DIR);
 app.use('/api/team-projects', createTeamProjectsRoutes(DATA_DIR, jwtService));
+
+// AECORD team members routes
+app.use('/api/team-members', createTeamMembersRoutes(DATA_DIR, jwtService, userService));
 
 app.use('/api/fs', createFsRoutes(events));
 app.use('/api/agent', createAgentRoutes(agentService, events));

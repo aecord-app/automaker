@@ -325,23 +325,28 @@ export const CardActions = memo(function CardActions({
           )}
         </>
       )}
-      {/* Mark as Fixed - shown when feature has error, for admin */}
-      {!isCurrentAutoTask && isAdmin && feature.error && onMarkFixed && (
-        <Button
-          variant="default"
-          size="sm"
-          className="flex-1 h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
-          onClick={(e) => {
-            e.stopPropagation();
-            onMarkFixed();
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          data-testid={`mark-fixed-${feature.id}`}
-        >
-          <BadgeCheck className="w-3 h-3 mr-1" />
-          Mark Fixed
-        </Button>
-      )}
+      {/* Mark as Fixed - shown when feature has error/failed status, for admin */}
+      {!isCurrentAutoTask &&
+        isAdmin &&
+        onMarkFixed &&
+        (feature.error ||
+          feature.status === 'failed' ||
+          feature.title?.toLowerCase().startsWith('error')) && (
+          <Button
+            variant="default"
+            size="sm"
+            className="flex-1 h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMarkFixed();
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            data-testid={`mark-fixed-${feature.id}`}
+          >
+            <BadgeCheck className="w-3 h-3 mr-1" />
+            Mark Fixed
+          </Button>
+        )}
       {!isCurrentAutoTask &&
         ['backlog', 'pending_approval', 'approved'].includes(feature.status) && (
           <>

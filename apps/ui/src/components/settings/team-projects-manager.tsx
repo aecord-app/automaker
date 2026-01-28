@@ -222,13 +222,13 @@ export function TeamProjectsManager({ className }: TeamProjectsManagerProps) {
           <div
             className={cn(
               'w-5 h-5 rounded border flex items-center justify-center transition-colors',
-              settings.canBrowseFilesystem
+              settings.allowNonAdminBrowse
                 ? 'bg-brand-500 border-brand-500'
                 : 'bg-muted border-border'
             )}
-            onClick={() => updateSettings({ allowNonAdminBrowse: !settings.canBrowseFilesystem })}
+            onClick={() => updateSettings({ allowNonAdminBrowse: !settings.allowNonAdminBrowse })}
           >
-            {settings.canBrowseFilesystem && <Check className="w-3 h-3 text-white" />}
+            {settings.allowNonAdminBrowse && <Check className="w-3 h-3 text-white" />}
           </div>
           <div>
             <span className="text-sm font-medium">Allow non-admin users to browse filesystem</span>

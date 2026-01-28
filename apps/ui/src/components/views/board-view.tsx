@@ -1281,7 +1281,11 @@ export function BoardView() {
         action: 'marked_fixed',
         timestamp: now,
         user,
-        details: feature.error ? `Auto-resolved error: ${feature.error}` : 'Marked as fixed',
+        details: feature.error
+          ? `Auto-resolved error: ${feature.error}`
+          : feature.title?.toLowerCase().startsWith('error')
+            ? `Resolved error feature: ${feature.title}`
+            : 'Marked as fixed',
       };
       updateFeature(feature.id, {
         status: 'completed',

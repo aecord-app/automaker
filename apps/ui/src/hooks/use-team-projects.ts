@@ -20,6 +20,7 @@ export interface TeamProject {
 
 export interface TeamProjectsSettings {
   canBrowseFilesystem: boolean;
+  allowNonAdminBrowse: boolean; // Raw setting value (not computed per-role)
   allowNonAdminAccess: boolean;
   defaultProjectId?: string;
 }
@@ -61,7 +62,11 @@ export function useTeamProjects() {
         return {
           success: false,
           projects: [],
-          settings: { canBrowseFilesystem: true, allowNonAdminAccess: true },
+          settings: {
+            canBrowseFilesystem: true,
+            allowNonAdminBrowse: false,
+            allowNonAdminAccess: true,
+          },
         };
       }
 
@@ -175,7 +180,11 @@ export function useTeamProjects() {
   });
 
   const projects = data?.projects || [];
-  const settings = data?.settings || { canBrowseFilesystem: true, allowNonAdminAccess: true };
+  const settings = data?.settings || {
+    canBrowseFilesystem: true,
+    allowNonAdminBrowse: false,
+    allowNonAdminAccess: true,
+  };
   const isAdmin = user?.role === 'admin';
   const canBrowseFilesystem = isAdmin || settings.canBrowseFilesystem;
   const isServerAccessEnabled = isAdmin || settings.allowNonAdminAccess !== false;

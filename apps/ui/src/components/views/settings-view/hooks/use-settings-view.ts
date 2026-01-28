@@ -24,6 +24,7 @@ export type SettingsViewId =
   | 'danger'
   | 'role-permissions'
   | 'team-projects'
+  | 'team-members'
   | 'agent-profiles';
 
 interface UseSettingsViewOptions {

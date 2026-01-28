@@ -30,6 +30,7 @@ import { EventHooksSection } from './settings-view/event-hooks';
 import { ImportExportDialog } from './settings-view/components/import-export-dialog';
 import { RolePermissionsManager } from '@/components/settings/role-permissions-manager';
 import { TeamProjectsManager } from '@/components/settings/team-projects-manager';
+import { TeamMembersManager } from '@/components/settings/team-members-manager';
 import { ChangePasswordSection } from './settings-view/account/change-password-section';
 import { AgentProfilesSection } from './settings-view/agent-profiles/agent-profiles-section';
 import type { Theme } from './settings-view/shared/types';
@@ -205,6 +206,8 @@ export function SettingsView() {
         return <DeveloperSection />;
       case 'role-permissions':
         return <RolePermissionsManager />;
+      case 'team-members':
+        return <TeamMembersManager />;
       case 'team-projects':
         return <TeamProjectsManager />;
       default:
