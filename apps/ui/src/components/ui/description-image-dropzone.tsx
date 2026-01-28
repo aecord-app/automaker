@@ -41,7 +41,6 @@ interface DescriptionImageDropZoneProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
-  maxFiles?: number;
   maxFileSize?: number; // in bytes, default 10MB
   // Optional: pass preview map from parent to persist across tab switches
   previewMap?: ImagePreviewMap;
@@ -60,7 +59,6 @@ export function DescriptionImageDropZone({
   placeholder = 'Describe the feature...',
   className,
   disabled = false,
-  maxFiles = 5,
   maxFileSize = DEFAULT_MAX_FILE_SIZE,
   previewMap,
   onPreviewMapChange,
@@ -141,9 +139,6 @@ export function DescriptionImageDropZone({
       const newPreviews = new Map(previewImages);
       const errors: string[] = [];
 
-      // Calculate total current files
-      const currentTotalFiles = images.length + textFiles.length;
-
       for (const file of Array.from(files)) {
         // Check if it's a text file
         if (isTextFile(file)) {
@@ -151,13 +146,6 @@ export function DescriptionImageDropZone({
           if (!validation.isValid) {
             errors.push(validation.error!);
             continue;
-          }
-
-          // Check if we've reached max files
-          const totalFiles = newImages.length + newTextFiles.length + currentTotalFiles;
-          if (totalFiles >= maxFiles) {
-            errors.push(`Maximum ${maxFiles} files allowed.`);
-            break;
           }
 
           try {
@@ -182,13 +170,6 @@ export function DescriptionImageDropZone({
             const maxSizeMB = maxFileSize / (1024 * 1024);
             errors.push(`${file.name}: File too large. Maximum size is ${maxSizeMB}MB.`);
             continue;
-          }
-
-          // Check if we've reached max files
-          const totalFiles = newImages.length + newTextFiles.length + currentTotalFiles;
-          if (totalFiles >= maxFiles) {
-            errors.push(`Maximum ${maxFiles} files allowed.`);
-            break;
           }
 
           try {
@@ -238,7 +219,6 @@ export function DescriptionImageDropZone({
       isProcessing,
       images,
       textFiles,
-      maxFiles,
       maxFileSize,
       onImagesChange,
       onTextFilesChange,
