@@ -472,8 +472,15 @@ export interface FeaturesAPI {
     updates: Partial<Feature>,
     descriptionHistorySource?: 'enhance' | 'edit',
     enhancementMode?: 'improve' | 'technical' | 'simplify' | 'acceptance' | 'ux-reviewer',
-    preEnhancementDescription?: string
-  ) => Promise<{ success: boolean; feature?: Feature; error?: string }>;
+    preEnhancementDescription?: string,
+    expectedVersion?: number
+  ) => Promise<{
+    success: boolean;
+    feature?: Feature;
+    error?: string;
+    code?: string;
+    currentFeature?: Feature;
+  }>;
   delete: (projectPath: string, featureId: string) => Promise<{ success: boolean; error?: string }>;
   getAgentOutput: (
     projectPath: string,
@@ -3189,7 +3196,15 @@ function createMockFeaturesAPI(): FeaturesAPI {
       return { success: true, feature };
     },
 
-    update: async (projectPath: string, featureId: string, updates: Partial<Feature>) => {
+    update: async (
+      projectPath: string,
+      featureId: string,
+      updates: Partial<Feature>,
+      _descriptionHistorySource?: 'enhance' | 'edit',
+      _enhancementMode?: 'improve' | 'technical' | 'simplify' | 'acceptance' | 'ux-reviewer',
+      _preEnhancementDescription?: string,
+      expectedVersion?: number
+    ) => {
       console.log('[Mock] Updating feature:', {
         projectPath,
         featureId,
@@ -3200,7 +3215,26 @@ function createMockFeaturesAPI(): FeaturesAPI {
       if (!existing) {
         return { success: false, error: 'Feature not found' };
       }
-      const feature = { ...JSON.parse(existing), ...updates };
+      const existingFeature = JSON.parse(existing);
+      // Version check for optimistic locking
+      if (expectedVersion !== undefined) {
+        const currentVersion = existingFeature.version ?? 0;
+        if (currentVersion !== expectedVersion) {
+          return {
+            success: false,
+            error: `Version conflict: expected ${expectedVersion}, got ${currentVersion}`,
+            code: 'VERSION_CONFLICT',
+            currentFeature: existingFeature,
+          };
+        }
+      }
+      const currentVersion = existingFeature.version ?? 0;
+      const feature = {
+        ...existingFeature,
+        ...updates,
+        version: currentVersion + 1,
+        updatedAt: new Date().toISOString(),
+      };
       mockFileSystem[featurePath] = JSON.stringify(feature, null, 2);
       return { success: true, feature };
     },

@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { createLogger } from '@automaker/utils/logger';
 import { useFeatures } from '@/hooks/queries';
 import { queryKeys } from '@/lib/query-keys';
+import type { Feature } from '@automaker/types';
 
 const logger = createLogger('BoardFeatures');
 
@@ -163,32 +164,71 @@ export function useBoardFeatures({ currentProject }: UseBoardFeaturesProps) {
     const unsubs = [
       api.features.onFeatureCreated((payload: any) => {
         if (payload.projectPath === projectPath) {
-          logger.info('[BoardFeatures] Feature created by another user, reloading...');
-          queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+          logger.info('[BoardFeatures] Feature created by another user');
+          // If event includes full feature data, add directly to cache
+          if (payload.feature) {
+            queryClient.setQueryData<Feature[]>(queryKeys.features.all(projectPath), (old) =>
+              old ? [...old, payload.feature] : [payload.feature]
+            );
+          } else {
+            // Fallback to invalidation if no feature data
+            queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+          }
         }
       }),
       api.features.onFeatureUpdated((payload: any) => {
         if (payload.projectPath === projectPath) {
-          logger.info('[BoardFeatures] Feature updated by another user, reloading...');
-          queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+          logger.info('[BoardFeatures] Feature updated by another user');
+          // If event includes full feature data, update cache directly
+          if (payload.feature) {
+            queryClient.setQueryData<Feature[]>(queryKeys.features.all(projectPath), (old) =>
+              old ? old.map((f) => (f.id === payload.featureId ? payload.feature : f)) : []
+            );
+          } else {
+            // Fallback to invalidation if no feature data
+            queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+          }
         }
       }),
       api.features.onFeatureDeleted((payload: any) => {
         if (payload.projectPath === projectPath) {
-          logger.info('[BoardFeatures] Feature deleted by another user, reloading...');
-          queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+          logger.info('[BoardFeatures] Feature deleted by another user');
+          // Remove feature directly from cache
+          queryClient.setQueryData<Feature[]>(queryKeys.features.all(projectPath), (old) =>
+            old ? old.filter((f) => f.id !== payload.featureId) : []
+          );
         }
       }),
       api.features.onFeatureBulkUpdated((payload: any) => {
         if (payload.projectPath === projectPath) {
-          logger.info('[BoardFeatures] Features bulk-updated, reloading...');
-          queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+          logger.info('[BoardFeatures] Features bulk-updated');
+          // If event includes full features data, update cache directly
+          if (payload.features && Array.isArray(payload.features)) {
+            const updatesMap = new Map<string, Feature>(
+              payload.features.map((f: Feature) => [f.id, f])
+            );
+            queryClient.setQueryData<Feature[]>(queryKeys.features.all(projectPath), (old) =>
+              old ? old.map((f) => updatesMap.get(f.id) ?? f) : []
+            );
+          } else {
+            // Fallback to invalidation if no features data
+            queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+          }
         }
       }),
       api.features.onFeatureBulkDeleted((payload: any) => {
         if (payload.projectPath === projectPath) {
-          logger.info('[BoardFeatures] Features bulk-deleted, reloading...');
-          queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+          logger.info('[BoardFeatures] Features bulk-deleted');
+          // If event includes feature IDs, remove directly from cache
+          if (payload.featureIds && Array.isArray(payload.featureIds)) {
+            const idsSet = new Set(payload.featureIds);
+            queryClient.setQueryData<Feature[]>(queryKeys.features.all(projectPath), (old) =>
+              old ? old.filter((f) => !idsSet.has(f.id)) : []
+            );
+          } else {
+            // Fallback to invalidation if no IDs
+            queryClient.invalidateQueries({ queryKey: queryKeys.features.all(projectPath) });
+          }
         }
       }),
     ];

@@ -357,6 +357,7 @@ export class FeatureLoader {
     }
 
     // Ensure feature has required fields
+    const now = new Date().toISOString();
     const feature: Feature = {
       category: featureData.category || 'Uncategorized',
       description: featureData.description || '',
@@ -364,6 +365,9 @@ export class FeatureLoader {
       id: featureId,
       imagePaths: migratedImagePaths,
       descriptionHistory: initialHistory,
+      version: 1,
+      createdAt: featureData.createdAt || now,
+      updatedAt: now,
     };
 
     // Write feature.json atomically with backup support
@@ -381,6 +385,10 @@ export class FeatureLoader {
    * @param descriptionHistorySource - Source of description change ('enhance' or 'edit')
    * @param enhancementMode - Enhancement mode if source is 'enhance'
    * @param preEnhancementDescription - Description before enhancement (for restoring original)
+   * @param expectedVersion - Expected version for optimistic locking (optional)
+   * @returns Updated feature
+   * @throws Error if feature not found
+   * @throws Error with code 'VERSION_CONFLICT' if expectedVersion doesn't match current version
    */
   async update(
     projectPath: string,
@@ -388,11 +396,25 @@ export class FeatureLoader {
     updates: Partial<Feature>,
     descriptionHistorySource?: 'enhance' | 'edit',
     enhancementMode?: 'improve' | 'technical' | 'simplify' | 'acceptance' | 'ux-reviewer',
-    preEnhancementDescription?: string
+    preEnhancementDescription?: string,
+    expectedVersion?: number
   ): Promise<Feature> {
     const feature = await this.get(projectPath, featureId);
     if (!feature) {
       throw new Error(`Feature ${featureId} not found`);
+    }
+
+    // Version check for optimistic locking
+    if (expectedVersion !== undefined) {
+      const currentVersion = feature.version ?? 0;
+      if (currentVersion !== expectedVersion) {
+        const error = new Error(
+          `Version conflict: expected version ${expectedVersion}, but current version is ${currentVersion}`
+        ) as Error & { code: string; currentFeature: Feature };
+        error.code = 'VERSION_CONFLICT';
+        error.currentFeature = feature;
+        throw error;
+      }
     }
 
     // Handle image path changes
@@ -443,12 +465,15 @@ export class FeatureLoader {
       updatedHistory = [...updatedHistory, historyEntry];
     }
 
-    // Merge updates
+    // Merge updates with version increment and timestamp
+    const currentVersion = feature.version ?? 0;
     const updatedFeature: Feature = {
       ...feature,
       ...updates,
       ...(updatedImagePaths !== undefined ? { imagePaths: updatedImagePaths } : {}),
       descriptionHistory: updatedHistory,
+      version: currentVersion + 1,
+      updatedAt: new Date().toISOString(),
     };
 
     // Write back to file atomically with backup support

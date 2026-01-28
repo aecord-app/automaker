@@ -50,6 +50,23 @@ export function useCreateFeature(projectPath: string) {
 }
 
 /**
+ * Error type for version conflicts
+ */
+interface VersionConflictError extends Error {
+  code: 'VERSION_CONFLICT';
+  currentFeature: Feature;
+}
+
+function isVersionConflictError(error: unknown): error is VersionConflictError {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    'code' in error &&
+    (error as { code: string }).code === 'VERSION_CONFLICT'
+  );
+}
+
+/**
  * Update an existing feature
  *
  * @param projectPath - Path to the project
@@ -65,12 +82,14 @@ export function useUpdateFeature(projectPath: string) {
       descriptionHistorySource,
       enhancementMode,
       preEnhancementDescription,
+      expectedVersion,
     }: {
       featureId: string;
       updates: Partial<Feature>;
       descriptionHistorySource?: 'enhance' | 'edit';
       enhancementMode?: 'improve' | 'technical' | 'simplify' | 'acceptance' | 'ux-reviewer';
       preEnhancementDescription?: string;
+      expectedVersion?: number;
     }) => {
       const api = getElectronAPI();
       const result = await api.features?.update(
@@ -79,9 +98,17 @@ export function useUpdateFeature(projectPath: string) {
         updates,
         descriptionHistorySource,
         enhancementMode,
-        preEnhancementDescription
+        preEnhancementDescription,
+        expectedVersion
       );
       if (!result?.success) {
+        // Check for version conflict
+        if (result?.code === 'VERSION_CONFLICT' && result?.currentFeature) {
+          const error = new Error(result.error || 'Version conflict') as VersionConflictError;
+          error.code = 'VERSION_CONFLICT';
+          error.currentFeature = result.currentFeature;
+          throw error;
+        }
         throw new Error(result?.error || 'Failed to update feature');
       }
       return result.feature;
@@ -108,14 +135,27 @@ export function useUpdateFeature(projectPath: string) {
 
       return { previousFeatures };
     },
-    onError: (error: Error, _, context) => {
+    onError: (error: unknown, _, context) => {
       // Rollback on error
       if (context?.previousFeatures) {
         queryClient.setQueryData(queryKeys.features.all(projectPath), context.previousFeatures);
       }
-      toast.error('Failed to update feature', {
-        description: error.message,
-      });
+
+      // Handle version conflict specially
+      if (isVersionConflictError(error)) {
+        // Update cache with the current server version to prevent stale data
+        queryClient.setQueryData<Feature[]>(queryKeys.features.all(projectPath), (old) =>
+          old ? old.map((f) => (f.id === error.currentFeature.id ? error.currentFeature : f)) : []
+        );
+        toast.error('Update conflict', {
+          description:
+            'This feature was modified by another user. Your changes were not saved. Please try again.',
+        });
+      } else {
+        toast.error('Failed to update feature', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
     },
     onSettled: () => {
       // Always refetch after error or success

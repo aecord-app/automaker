@@ -562,7 +562,12 @@ type EventType =
   | 'dev-server:started'
   | 'dev-server:output'
   | 'dev-server:stopped'
-  | 'notification:created';
+  | 'notification:created'
+  | 'feature:created'
+  | 'feature:updated'
+  | 'feature:deleted'
+  | 'feature:bulk-updated'
+  | 'feature:bulk-deleted';
 
 /**
  * Dev server log event payloads for WebSocket streaming
@@ -1631,6 +1636,12 @@ export class HttpApiClient implements ElectronAPI {
       results?: Array<{ featureId: string; success: boolean; error?: string }>;
       error?: string;
     }>;
+    // Real-time event subscriptions for multi-user sync
+    onFeatureCreated: (callback: (payload: any) => void) => () => void;
+    onFeatureUpdated: (callback: (payload: any) => void) => () => void;
+    onFeatureDeleted: (callback: (payload: any) => void) => () => void;
+    onFeatureBulkUpdated: (callback: (payload: any) => void) => () => void;
+    onFeatureBulkDeleted: (callback: (payload: any) => void) => () => void;
   } = {
     getAll: (projectPath: string) => this.post('/api/features/list', { projectPath }),
     get: (projectPath: string, featureId: string) =>
@@ -1643,7 +1654,8 @@ export class HttpApiClient implements ElectronAPI {
       updates: Partial<Feature>,
       descriptionHistorySource?: 'enhance' | 'edit',
       enhancementMode?: 'improve' | 'technical' | 'simplify' | 'acceptance' | 'ux-reviewer',
-      preEnhancementDescription?: string
+      preEnhancementDescription?: string,
+      expectedVersion?: number
     ) =>
       this.post('/api/features/update', {
         projectPath,
@@ -1652,6 +1664,7 @@ export class HttpApiClient implements ElectronAPI {
         descriptionHistorySource,
         enhancementMode,
         preEnhancementDescription,
+        expectedVersion,
       }),
     delete: (projectPath: string, featureId: string) =>
       this.post('/api/features/delete', { projectPath, featureId }),

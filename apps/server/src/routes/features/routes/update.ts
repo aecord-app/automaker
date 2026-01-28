@@ -24,6 +24,7 @@ export function createUpdateHandler(featureLoader: FeatureLoader, events?: Event
         descriptionHistorySource,
         enhancementMode,
         preEnhancementDescription,
+        expectedVersion,
       } = req.body as {
         projectPath: string;
         featureId: string;
@@ -31,6 +32,7 @@ export function createUpdateHandler(featureLoader: FeatureLoader, events?: Event
         descriptionHistorySource?: 'enhance' | 'edit';
         enhancementMode?: 'improve' | 'technical' | 'simplify' | 'acceptance' | 'ux-reviewer';
         preEnhancementDescription?: string;
+        expectedVersion?: number;
       };
 
       if (!projectPath || !featureId || !updates) {
@@ -63,14 +65,40 @@ export function createUpdateHandler(featureLoader: FeatureLoader, events?: Event
       const previousStatus = currentFeature?.status as FeatureStatus | undefined;
       const newStatus = updates.status as FeatureStatus | undefined;
 
-      const updated = await featureLoader.update(
-        projectPath,
-        featureId,
-        updates,
-        descriptionHistorySource,
-        enhancementMode,
-        preEnhancementDescription
-      );
+      let updated: Feature;
+      try {
+        updated = await featureLoader.update(
+          projectPath,
+          featureId,
+          updates,
+          descriptionHistorySource,
+          enhancementMode,
+          preEnhancementDescription,
+          expectedVersion
+        );
+      } catch (updateError: unknown) {
+        // Handle version conflict error
+        if (
+          updateError &&
+          typeof updateError === 'object' &&
+          'code' in updateError &&
+          (updateError as { code: string }).code === 'VERSION_CONFLICT'
+        ) {
+          const conflictError = updateError as {
+            code: string;
+            currentFeature: Feature;
+            message: string;
+          };
+          res.status(409).json({
+            success: false,
+            error: conflictError.message,
+            code: 'VERSION_CONFLICT',
+            currentFeature: conflictError.currentFeature,
+          });
+          return;
+        }
+        throw updateError;
+      }
 
       // Trigger sync to app_spec.txt when status changes to verified or completed
       if (newStatus && SYNC_TRIGGER_STATUSES.includes(newStatus) && previousStatus !== newStatus) {
@@ -88,11 +116,13 @@ export function createUpdateHandler(featureLoader: FeatureLoader, events?: Event
       }
 
       // Emit feature_updated event for real-time sync
+      // Include full feature data so clients can update cache directly without refetching
       if (events) {
         events.emit('feature:updated', {
           featureId: updated.id,
           featureName: updated.title || updated.name,
           projectPath,
+          feature: updated,
         });
       }
 

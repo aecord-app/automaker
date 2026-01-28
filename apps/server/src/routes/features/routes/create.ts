@@ -40,11 +40,13 @@ export function createCreateHandler(featureLoader: FeatureLoader, events?: Event
       const created = await featureLoader.create(projectPath, feature);
 
       // Emit feature_created event for hooks
+      // Include full feature data so clients can update cache directly without refetching
       if (events) {
         events.emit('feature:created', {
           featureId: created.id,
           featureName: created.name,
           projectPath,
+          feature: created,
         });
       }
 

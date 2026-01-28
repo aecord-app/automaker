@@ -311,6 +311,18 @@ export interface Feature {
   createdAt?: string;
 
   /**
+   * ISO timestamp when the feature was last updated
+   * Used for optimistic locking to prevent race conditions
+   */
+  updatedAt?: string;
+
+  /**
+   * Version number for optimistic locking
+   * Incremented on every update to detect concurrent modifications
+   */
+  version?: number;
+
+  /**
    * User ID or username of who created/submitted the feature
    */
   createdBy?: string;
