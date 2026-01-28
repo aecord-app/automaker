@@ -178,6 +178,7 @@ Key data files:
 - Follow AutoMaker patterns (services, routes, Zustand stores)
 - All changes must pass existing tests
 - Keep UI responsive (<100ms interactions)
+- Do NOT add "Co-Authored-By" lines to git commit messages
 
 ---
 
