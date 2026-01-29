@@ -1375,7 +1375,7 @@ export function BoardView() {
         onDragEnd={handleDragEnd}
       >
         {/* Worktree Panel - conditionally rendered based on visibility setting */}
-        {isBoardAdmin && (worktreePanelVisibleByProject[currentProject.path] ?? true) && (
+        {(worktreePanelVisibleByProject[currentProject.path] ?? true) && (
           <WorktreePanel
             refreshTrigger={worktreeRefreshKey}
             projectPath={currentProject.path}

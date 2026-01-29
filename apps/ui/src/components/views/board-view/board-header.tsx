@@ -159,7 +159,7 @@ export function BoardHeader({
 
         {/* Desktop view: show full controls (admin only) */}
         {/* Worktrees Toggle - only show after mount to prevent hydration issues */}
-        {isMounted && !isTablet && isAdmin && (
+        {isMounted && !isTablet && (
           <div className={controlContainerClass} data-testid="worktrees-toggle-container">
             <GitBranch className="w-4 h-4 text-muted-foreground" />
             <Label
