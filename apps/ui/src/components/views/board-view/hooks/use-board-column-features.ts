@@ -35,8 +35,17 @@ export function useBoardColumnFeatures({
       approved: [],
       in_progress: [],
       waiting_approval: [],
+      waiting_review: [],
       verified: [],
       completed: [], // Completed features are shown in the archive modal, not as a column
+    };
+
+    // Map legacy status names to current column IDs
+    const STATUS_ALIASES: Record<string, string> = {
+      pending: 'backlog',
+      running: 'in_progress',
+      failed: 'backlog',
+      waiting_approval: 'waiting_review',
     };
     const featureMap = createFeatureMap(features);
     const runningTaskIds = new Set(runningAutoTasks);
@@ -99,7 +108,9 @@ export function useBoardColumnFeatures({
       }
 
       // Use the feature's status (fallback to backlog for unknown statuses)
-      const status = f.status || 'backlog';
+      // Resolve legacy status aliases to current column IDs
+      const rawStatus = f.status || 'backlog';
+      const status = STATUS_ALIASES[rawStatus] || rawStatus;
 
       // IMPORTANT:
       // Historically, we forced "running" features into in_progress so they never disappeared
